@@ -6,7 +6,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useTheme } from "@/contexts/ThemeContext";
-import { useLanguage, type Language } from "@/contexts/LanguageContext";
+import { useTranslation } from "react-i18next";
 import { formatRelativeTime, formatAbsoluteTime } from "@/lib/utils";
 
 interface HeaderProps {
@@ -17,12 +17,9 @@ interface HeaderProps {
 
 export default function Header({ lastUpdated, timezone, onRefresh }: HeaderProps) {
   const { theme, toggleTheme } = useTheme();
-  const { language, setLanguage, t } = useLanguage();
+  const { t, i18n } = useTranslation();
 
-  const handleLanguageToggle = () => {
-    const newLang: Language = language === "en" ? "ar" : "en";
-    setLanguage(newLang);
-  };
+
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -31,7 +28,7 @@ export default function Header({ lastUpdated, timezone, onRefresh }: HeaderProps
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-amber-500 to-orange-600">
             <Sun className="h-5 w-5 text-white" />
           </div>
-          <h1 className="text-xl font-bold tracking-tight">{t("app.title")}</h1>
+          <h1 className="text-xl font-bold tracking-tight">Dair Home</h1>
         </div>
 
         <div className="flex items-center gap-4">
@@ -57,12 +54,12 @@ export default function Header({ lastUpdated, timezone, onRefresh }: HeaderProps
           <Button
             variant="ghost"
             size="icon"
-            onClick={handleLanguageToggle}
-            title={language === "en" ? "العربية" : "English"}
+            onClick={() => i18n.changeLanguage(i18n.language === "en" ? "ar" : "en")}
+            title={i18n.language === "en" ? "العربية" : "English"}
           >
             <Globe className="h-5 w-5" />
             <span className="ml-1 text-xs font-semibold">
-              {language === "en" ? "EN" : "AR"}
+              {i18n.language === "en" ? "EN" : "AR"}
             </span>
           </Button>
 

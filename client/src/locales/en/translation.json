@@ -1,0 +1,22 @@
+{
+  "welcome": "Welcome to Dair Home",
+  "electricity_status_on": "Electricity ON",
+  "electricity_status_off": "Electricity OFF",
+  "last_updated": "Last updated: {{time}}",
+  "home_consumption_breakdown": "Home Consumption Breakdown ({{totalLoad}})",
+  "from_solar": "From Solar",
+  "from_battery": "From Battery",
+  "from_grid": "From Grid",
+  "solar_percent": "Solar %",
+  "battery_percent": "Battery %",
+  "grid_percent": "Grid %",
+  "total_home_load": "Total Home Load",
+  "solar_generation": "Solar Generation",
+  "battery_status": "Battery Status",
+  "charging": "Charging",
+  "discharging": "Discharging",
+  "idle": "Idle",
+  "grid_status": "Grid Status",
+  "importing": "Importing",
+  "exporting": "Exporting"
+}

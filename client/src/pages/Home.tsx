@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import Header from "@/components/Header";
 import BatteryCard from "@/components/BatteryCard";
 import InverterPanel from "@/components/InverterPanel";
@@ -10,7 +11,7 @@ import ErrorBanner from "@/components/ErrorBanner";
 import GovernmentElectricityCard from "@/components/GovernmentElectricityCard";
 import { SkeletonBatteryCard, SkeletonCard } from "@/components/SkeletonCard";
 import { fetchDashboardData, fetchTrendsData } from "@/lib/api";
-import { useLanguage } from "@/contexts/LanguageContext";
+
 import { DashboardData, TrendsSeries } from "@/types/energy";
 
 interface ElectricityInterval {
@@ -20,7 +21,7 @@ interface ElectricityInterval {
 }
 
 export default function Home() {
-  const { t } = useLanguage();
+  const { t } = useTranslation();
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [trendsData, setTrendsData] = useState<TrendsSeries | null>(null);
   const [isLoading, setIsLoading] = useState(true);

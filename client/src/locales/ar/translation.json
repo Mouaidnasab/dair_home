@@ -1,0 +1,22 @@
+{
+  "welcome": "مرحبا بكم في دار هوم",
+  "electricity_status_on": "الكهرباء متوفرة",
+  "electricity_status_off": "الكهرباء غير متوفرة",
+  "last_updated": "آخر تحديث: {{time}}",
+  "home_consumption_breakdown": "تحليل استهلاك المنزل ({{totalLoad}})",
+  "from_solar": "من الطاقة الشمسية",
+  "from_battery": "من البطارية",
+  "from_grid": "من الشبكة",
+  "solar_percent": "نسبة الطاقة الشمسية",
+  "battery_percent": "نسبة البطارية",
+  "grid_percent": "نسبة الشبكة",
+  "total_home_load": "إجمالي حمل المنزل",
+  "solar_generation": "توليد الطاقة الشمسية",
+  "battery_status": "حالة البطارية",
+  "charging": "شحن",
+  "discharging": "تفريغ",
+  "idle": "خامل",
+  "grid_status": "حالة الشبكة",
+  "importing": "استيراد",
+  "exporting": "تصدير"
+}
