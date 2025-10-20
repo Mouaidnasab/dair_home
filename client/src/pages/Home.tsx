@@ -3,6 +3,8 @@ import Header from "@/components/Header";
 import BatteryCard from "@/components/BatteryCard";
 import InverterPanel from "@/components/InverterPanel";
 import TrendsCard from "@/components/TrendsCard";
+import ElectricityStatusCard from "@/components/ElectricityStatusCard";
+
 import Footer from "@/components/Footer";
 import ErrorBanner from "@/components/ErrorBanner";
 import GovernmentElectricityCard from "@/components/GovernmentElectricityCard";
@@ -120,17 +122,17 @@ export default function Home() {
     return () => clearInterval(interval);
   }, []);
 
-  const avgLoad =
+  const totalLoadW =
     dashboardData &&
     (dashboardData.inverters.groundFloor.loadW +
-      dashboardData.inverters.firstFloor.loadW) /
-      2;
+      dashboardData.inverters.firstFloor.loadW);
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <Header
         lastUpdated={dashboardData?.lastUpdated || new Date().toISOString()}
         timezone={dashboardData?.location.timezone}
+        onRefresh={loadData}
       />
 
       <main className="flex-1">
@@ -160,10 +162,13 @@ export default function Home() {
             </div>
           ) : dashboardData && trendsData ? (
             <div className="space-y-6">
+              {/* Electricity Status Card */}
+              <ElectricityStatusCard data={dashboardData} />
+
               {/* Battery Card */}
               <BatteryCard
                 battery={dashboardData.battery}
-                loadW={avgLoad || 0}
+                loadW={totalLoadW || 0}
               />
 
               {/* Inverter Panels */}

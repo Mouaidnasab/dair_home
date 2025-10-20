@@ -66,34 +66,34 @@ export async function fetchTimeSeries(
 function transformApiRecord(row: any): EnergyRecord {
   return {
     timestamp: row.timestamp || new Date().toISOString(),
-    plantId: row.plantId || row.pd_id || "",
-    plantLabel: row.plantLabel || row.pd_name || "",
+    plantId: row.plantId || "",
+    plantLabel: row.plantLabel || "",
     pd_pvTotalPower: parseInt(row.pd_pvTotalPower) || 0,
     pd_ratedPower: parseInt(row.pd_ratedPower) || 0,
     pd_todayPv: parseFloat(row.pd_todayPv) || 0,
     pd_monthPv: parseFloat(row.pd_monthPv) || 0,
     pd_yearPv: parseFloat(row.pd_yearPv) || 0,
     pd_accPv: parseFloat(row.pd_accPv) || 0,
-    pd_pvTodayIncome: parseInt(row.pd_pvTodayIncome) || 0,
-    pd_monthPvIncome: parseInt(row.pd_monthPvIncome) || 0,
-    pd_yearPvIncome: parseInt(row.pd_yearPvIncome) || 0,
+    pd_pvTodayIncome: parseFloat(row.pd_pvTodayIncome) || 0,
+    pd_monthPvIncome: parseFloat(row.pd_monthPvIncome) || 0,
+    pd_yearPvIncome: parseFloat(row.pd_yearPvIncome) || 0,
     pd_currency: row.pd_currency || "SYP",
     pd_countryName: row.pd_countryName || "",
     pd_cityName: row.pd_cityName || "",
     pd_status: row.pd_status || "N",
-    ef_emsSoc: parseInt(row.ef_emsSoc) || 0,
-    ef_totalOutPutPower: parseInt(row.ef_acTotalOutActPower) || 0,
-    ef_bmsPower: parseInt(row.ef_emsPower) || 0,
-    ef_genPower: parseInt(row.ef_genPower) || 0,
-    ef_acTtlInPower: parseInt(row.ef_acTtlInPower) || 0,
-    ef_meterPower: parseInt(row.ef_meterPower) || 0,
-    ef_microInvTotalPower: parseInt(row.ef_microInvTotalPower) || 0,
-    ef_ctThreePhaseTotalPower: parseInt(row.ef_ctThreePhaseTotalPower) || parseInt(row.ef_acTotalOutActPower) || 0,
+    ef_emsSoc: parseFloat(row.ef_emsSoc) || 0,
+    ef_acTotalOutActPower: parseFloat(row.ef_acTotalOutActPower) || 0,
+    ef_emsPower: parseFloat(row.ef_emsPower) || 0,
+    ef_genPower: parseFloat(row.ef_genPower) || 0,
+    ef_acTtlInPower: parseFloat(row.ef_acTtlInPower) || 0,
+    ef_meterPower: parseFloat(row.ef_meterPower) || 0,
+    ef_microInvTotalPower: parseFloat(row.ef_microInvTotalPower) || 0,
+    ef_ctThreePhaseTotalPower: parseFloat(row.ef_ctThreePhaseTotalPower) || parseFloat(row.ef_acTotalOutActPower) || 0,
     ef_deviceSn: row.ef_deviceSn || "",
     ef_deviceModel: row.ef_deviceModel || "",
     pd_installDateStr: row.pd_installDateStr || "",
     pd_timeZone: row.pd_timeZone || "UTC+02:00",
-    pd_electricityPrice: parseInt(row.pd_electricityPrice) || 0,
+    pd_electricityPrice: parseFloat(row.pd_electricityPrice) || 0,
   };
 }
 
@@ -101,7 +101,7 @@ function transformApiRecord(row: any): EnergyRecord {
  * Build dashboard data from inverter records
  */
 function buildDashboardData(groundFloor: EnergyRecord, firstFloor: EnergyRecord): DashboardData {
-  const batteryPower = groundFloor.ef_bmsPower;
+  const batteryPower = groundFloor.ef_emsPower;
   const batteryState = batteryPower > 50 ? "charging" : batteryPower < -50 ? "discharging" : "idle";
 
   return {
@@ -111,8 +111,8 @@ function buildDashboardData(groundFloor: EnergyRecord, firstFloor: EnergyRecord)
         pvNowW: groundFloor.pd_pvTotalPower,
         todayKWh: groundFloor.pd_todayPv,
         ratedKwp: groundFloor.pd_ratedPower,
-        loadW: groundFloor.ef_totalOutPutPower,
-        genW: groundFloor.ef_genPower,
+        loadW: groundFloor.ef_acTotalOutActPower,
+
         gridW: groundFloor.ef_acTtlInPower,
         incomeToday: groundFloor.pd_pvTodayIncome,
         currency: groundFloor.pd_currency,
@@ -126,8 +126,8 @@ function buildDashboardData(groundFloor: EnergyRecord, firstFloor: EnergyRecord)
         pvNowW: firstFloor.pd_pvTotalPower,
         todayKWh: firstFloor.pd_todayPv,
         ratedKwp: firstFloor.pd_ratedPower,
-        loadW: firstFloor.ef_totalOutPutPower,
-        genW: firstFloor.ef_genPower,
+        loadW: firstFloor.ef_acTotalOutActPower,
+
         gridW: firstFloor.ef_acTtlInPower,
         incomeToday: firstFloor.pd_pvTodayIncome,
         currency: firstFloor.pd_currency,
@@ -185,8 +185,8 @@ export async function fetchTrendsData(): Promise<TrendsSeries> {
       records.map((r) => ({
         timestamp: r.timestamp,
         homePvPower: r.pd_pvTotalPower,
-        loadPower: r.ef_ctThreePhaseTotalPower || r.ef_totalOutPutPower,
-        batteryPower: r.ef_bmsPower,
+        loadPower: r.ef_ctThreePhaseTotalPower || r.ef_acTotalOutActPower,
+        batteryPower: r.ef_emsPower,
         gridPower: r.ef_acTtlInPower,
         genPower: r.ef_genPower,
         batterySoc: r.ef_emsSoc,

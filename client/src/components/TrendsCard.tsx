@@ -72,10 +72,12 @@ export default function TrendsCard({
     // Format data for display
     const formattedData = data.map((point) => ({
       ...point,
-      timestamp: new Date(point.timestamp).toLocaleTimeString("en-US", {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
+        timestamp: new Date(point.timestamp).toLocaleString("en-US", {
+          hour: "2-digit",
+          minute: "2-digit",
+          day: "2-digit",
+          month: "short",
+        }),
     }));
 
     return (
@@ -163,16 +165,7 @@ export default function TrendsCard({
             dot={false}
             isAnimationActive={false}
           />
-          <Line
-            yAxisId="left"
-            type="monotone"
-            dataKey="genPower"
-            stroke="#8b5cf6"
-            strokeWidth={2}
-            name={t("legend.generator")}
-            dot={false}
-            isAnimationActive={false}
-          />
+
 
           {/* SOC line on right axis */}
           <Line

@@ -29,8 +29,8 @@ export interface EnergyRecord {
   
   // Battery/EMS Data (shared across inverters)
   ef_emsSoc: number; // % battery SOC
-  ef_totalOutPutPower: number; // W load instant
-  ef_bmsPower: number; // W battery charge(+)/discharge(-) power
+  ef_acTotalOutActPower: number; // W load instant
+  ef_emsPower: number; // W battery charge(+)/discharge(-) power
   
   // Grid/Gen/Meter Data
   ef_genPower: number; // W generator input
@@ -53,7 +53,7 @@ export interface InverterData {
   todayKWh: number;
   ratedKwp: number;
   loadW: number;
-  genW: number;
+
   gridW: number;
   incomeToday: number;
   currency: string;

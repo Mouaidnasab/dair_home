@@ -30,7 +30,7 @@ export const energyRouter = router({
       })
     )
     .query(async ({ input }) => {
-      const data = await fetchEnergyData("/export", {
+            const data = await fetchEnergyData("/export-compact", {
         plantId: input.plantId,
         label: input.label,
         limit: "1",
@@ -69,7 +69,7 @@ export const energyRouter = router({
         params.label = input.label;
       }
 
-      const data = await fetchEnergyData("/export", params);
+            const data = await fetchEnergyData("/export-compact", params);
 
       if (!data.rows) {
         return [];

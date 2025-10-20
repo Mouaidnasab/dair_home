@@ -49,7 +49,8 @@ export function formatAbsoluteTime(date: Date | string, timezone?: string): stri
 /**
  * Format power value (W → kW if >= 1000)
  */
-export function formatPower(watts: number): string {
+export function formatPower(watts: number | undefined): string {
+  if (watts === undefined || isNaN(watts)) return "N/A";
   const abs = Math.abs(watts);
   if (abs >= 1000) {
     return `${(watts / 1000).toFixed(1)} kW`;

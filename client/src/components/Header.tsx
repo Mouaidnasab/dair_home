@@ -1,4 +1,4 @@
-import { Sun, Moon, Globe } from "lucide-react";
+import { Sun, Moon, Globe, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -12,9 +12,10 @@ import { formatRelativeTime, formatAbsoluteTime } from "@/lib/utils";
 interface HeaderProps {
   lastUpdated: string;
   timezone?: string;
+  onRefresh: () => void;
 }
 
-export default function Header({ lastUpdated, timezone }: HeaderProps) {
+export default function Header({ lastUpdated, timezone, onRefresh }: HeaderProps) {
   const { theme, toggleTheme } = useTheme();
   const { language, setLanguage, t } = useLanguage();
 
@@ -34,14 +35,22 @@ export default function Header({ lastUpdated, timezone }: HeaderProps) {
         </div>
 
         <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onRefresh}
+            aria-label="Refresh Data"
+          >
+            <RefreshCw className="h-5 w-5" />
+          </Button>
           <Tooltip>
             <TooltipTrigger asChild>
               <div className="text-sm text-muted-foreground cursor-help">
-                {formatRelativeTime(lastUpdated)}
+                {formatAbsoluteTime(lastUpdated, timezone)}
               </div>
             </TooltipTrigger>
             <TooltipContent side="bottom">
-              {formatAbsoluteTime(lastUpdated, timezone)}
+              {formatRelativeTime(lastUpdated)}
             </TooltipContent>
           </Tooltip>
 
