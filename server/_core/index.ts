@@ -26,6 +26,41 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
   throw new Error(`No available port found starting from ${startPort}`);
 }
 
+// Extract only essential fields from the API response
+function extractEssentialFields(row: any) {
+  return {
+    timestamp: row.timestamp,
+    plantId: row.plantId || row.pd_id,
+    plantLabel: row.plantLabel || row.pd_name,
+    pd_pvTotalPower: parseInt(row.pd_pvTotalPower) || 0,
+    pd_ratedPower: parseInt(row.pd_ratedPower) || 0,
+    pd_todayPv: parseFloat(row.pd_todayPv) || 0,
+    pd_monthPv: parseFloat(row.pd_monthPv) || 0,
+    pd_yearPv: parseFloat(row.pd_yearPv) || 0,
+    pd_accPv: parseFloat(row.pd_accPv) || 0,
+    pd_pvTodayIncome: parseInt(row.pd_pvTodayIncome) || 0,
+    pd_monthPvIncome: parseInt(row.pd_monthPvIncome) || 0,
+    pd_yearPvIncome: parseInt(row.pd_yearPvIncome) || 0,
+    pd_currency: row.pd_currency || "SYP",
+    pd_countryName: row.pd_countryName || "",
+    pd_cityName: row.pd_cityName || "",
+    pd_status: row.pd_status || "N",
+    ef_emsSoc: parseInt(row.ef_emsSoc) || 0,
+    ef_acTotalOutActPower: parseInt(row.ef_acTotalOutActPower) || 0,
+    ef_emsPower: parseInt(row.ef_emsPower) || 0,
+    ef_genPower: parseInt(row.ef_genPower) || 0,
+    ef_acTtlInPower: parseInt(row.ef_acTtlInPower) || 0,
+    ef_meterPower: parseInt(row.ef_meterPower) || 0,
+    ef_microInvTotalPower: parseInt(row.ef_microInvTotalPower) || 0,
+    ef_ctThreePhaseTotalPower: parseInt(row.ef_ctThreePhaseTotalPower) || parseInt(row.ef_acTotalOutActPower) || 0,
+    ef_deviceSn: row.ef_deviceSn || "",
+    ef_deviceModel: row.ef_deviceModel || "",
+    pd_installDateStr: row.pd_installDateStr || "",
+    pd_timeZone: row.pd_timeZone || "UTC+02:00",
+    pd_electricityPrice: parseInt(row.pd_electricityPrice) || 0,
+  };
+}
+
 async function startServer() {
   const app = express();
   const server = createServer(app);
@@ -61,25 +96,29 @@ async function startServer() {
       const endOfDay = new Date(now);
       endOfDay.setHours(23, 59, 59, 999);
 
-      // Build URL with proper encoding
+      // Build URL - limit to 1 for latest only
       const params = new URLSearchParams({
         plantId: String(plantId),
         label: String(label),
         start: formatDateForBackend(startOfDay),
         end: formatDateForBackend(endOfDay),
-        limit: "1000",
+        limit: "1",
         fmt: "json",
       });
 
       const url = `https://dair.drd-home.online/export?${params.toString()}`;
-      console.log(`[Energy API] Fetching latest: ${url.substring(0, 80)}...`);
+      console.log(`[Energy API] Fetching latest for ${label}...`);
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
 
       const response = await fetch(url, {
         method: "GET",
-        headers: {
-          "Accept": "application/json",
-        },
+        headers: { "Accept": "application/json" },
+        signal: controller.signal,
       });
+
+      clearTimeout(timeout);
 
       if (!response.ok) {
         console.error(`[Energy API] Backend returned ${response.status}`);
@@ -87,9 +126,16 @@ async function startServer() {
       }
 
       const data = await response.json();
+      
+      // Filter and extract only essential fields
+      if (data.rows && Array.isArray(data.rows)) {
+        const filteredRows = data.rows.map(extractEssentialFields);
+        return res.json({ rows: filteredRows });
+      }
+      
       res.json(data);
     } catch (error) {
-      console.error("[Energy API] Error:", error);
+      console.error("[Energy API] Latest error:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });
@@ -122,14 +168,18 @@ async function startServer() {
       }
 
       const url = `https://dair.drd-home.online/export?${params.toString()}`;
-      console.log(`[Energy API] Fetching timeseries: ${url.substring(0, 80)}...`);
+      console.log(`[Energy API] Fetching timeseries for ${label || 'home'}...`);
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 20000);
 
       const response = await fetch(url, {
         method: "GET",
-        headers: {
-          "Accept": "application/json",
-        },
+        headers: { "Accept": "application/json" },
+        signal: controller.signal,
       });
+
+      clearTimeout(timeout);
 
       if (!response.ok) {
         console.error(`[Energy API] Backend returned ${response.status}`);
@@ -137,9 +187,16 @@ async function startServer() {
       }
 
       const data = await response.json();
+      
+      // Filter and extract only essential fields
+      if (data.rows && Array.isArray(data.rows)) {
+        const filteredRows = data.rows.map(extractEssentialFields);
+        return res.json({ rows: filteredRows });
+      }
+      
       res.json(data);
     } catch (error) {
-      console.error("[Energy API] Error:", error);
+      console.error("[Energy API] Timeseries error:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });
