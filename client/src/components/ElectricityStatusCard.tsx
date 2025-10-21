@@ -8,18 +8,23 @@ interface ElectricityStatusCardProps {
   data: DashboardData;
 }
 
-export default function ElectricityStatusCard({ data }: ElectricityStatusCardProps) {
-  const { t, i18n } = useTranslation();
+export default function ElectricityStatusCard({
+  data,
+}: ElectricityStatusCardProps) {
+  const { t } = useTranslation();
 
   // Calculate total PV power from both inverters
-  const totalPvPower = data.inverters.groundFloor.pvNowW + data.inverters.firstFloor.pvNowW;
-  
+  const totalPvPower =
+    data.inverters.groundFloor.pvNowW + data.inverters.firstFloor.pvNowW;
+
   // Calculate total home load from both inverters
-  const totalHomeLoad = data.inverters.groundFloor.loadW + data.inverters.firstFloor.loadW;
-  
+  const totalHomeLoad =
+    data.inverters.groundFloor.loadW + data.inverters.firstFloor.loadW;
+
   // Grid power (positive = importing, negative = exporting)
-  const gridPower = data.inverters.groundFloor.gridW + data.inverters.firstFloor.gridW;
-  
+  const gridPower =
+    data.inverters.groundFloor.gridW + data.inverters.firstFloor.gridW;
+
   // Battery power (positive = charging, negative = discharging)
   const batteryPower = data.battery.powerW;
 
@@ -29,10 +34,10 @@ export default function ElectricityStatusCard({ data }: ElectricityStatusCardPro
   // Calculate consumption breakdown by priority: Solar -> Battery -> Grid
   let solarConsumption = Math.min(totalPvPower, totalHomeLoad);
   let remainingLoad = totalHomeLoad - solarConsumption;
-  
+
   let batteryConsumption = 0;
   let gridConsumption = 0;
-  
+
   if (remainingLoad > 0) {
     // If battery is discharging, use it for consumption
     if (batteryPower < 0) {
@@ -44,7 +49,6 @@ export default function ElectricityStatusCard({ data }: ElectricityStatusCardPro
   }
 
   // Determine electricity status
-  
 
   return (
     <Card className="col-span-full relative" data-testid="electricity-status">
@@ -54,22 +58,10 @@ export default function ElectricityStatusCard({ data }: ElectricityStatusCardPro
             className={`h-3 w-3 rounded-full ${data.grid.isPowerOn ? "bg-green-500 animate-pulse" : "bg-gray-500"}`}
           />
           <span className="text-lg font-bold">
-            {data.grid.isPowerOn ? t("electricity_status_on") : t("electricity_status_off")}
+            {data.grid.isPowerOn
+              ? t("electricity_status_on")
+              : t("electricity_status_off")}
           </span>
-          <div className="absolute top-4 right-4 flex items-center space-x-2">
-            <button
-              onClick={() => i18n.changeLanguage("en")}
-              className={`px-3 py-1 rounded-md text-sm ${i18n.language === "en" ? "bg-blue-500 text-white" : "bg-gray-200 text-gray-700"}`}
-            >
-              EN
-            </button>
-            <button
-              onClick={() => i18n.changeLanguage("ar")}
-              className={`px-3 py-1 rounded-md text-sm ${i18n.language === "ar" ? "bg-blue-500 text-white" : "bg-gray-200 text-gray-700"}`}
-            >
-              AR
-            </button>
-          </div>
         </CardTitle>
       </CardHeader>
 
@@ -77,7 +69,9 @@ export default function ElectricityStatusCard({ data }: ElectricityStatusCardPro
         {/* Home Consumption Breakdown */}
         <div className="space-y-4">
           <div className="text-sm font-semibold text-muted-foreground">
-            {t("home_consumption_breakdown", { totalLoad: formatPower(totalHomeLoad) })}
+            {t("home_consumption_breakdown", {
+              totalLoad: formatPower(totalHomeLoad),
+            })}
           </div>
 
           {/* Solar Consumption */}
@@ -147,21 +141,36 @@ export default function ElectricityStatusCard({ data }: ElectricityStatusCardPro
         {/* Summary Stats */}
         <div className="border-t border-border pt-4 grid grid-cols-3 gap-4">
           <div className="text-center space-y-1">
-            <div className="text-xs text-muted-foreground">{t("solar_percent")}</div>
+            <div className="text-xs text-muted-foreground">
+              {t("solar_percent")}
+            </div>
             <div className="text-lg font-bold text-yellow-500">
-              {totalHomeLoad > 0 ? Math.round((solarConsumption / totalHomeLoad) * 100) : 0}%
+              {totalHomeLoad > 0
+                ? Math.round((solarConsumption / totalHomeLoad) * 100)
+                : 0}
+              %
             </div>
           </div>
           <div className="text-center space-y-1">
-            <div className="text-xs text-muted-foreground">{t("battery_percent")}</div>
+            <div className="text-xs text-muted-foreground">
+              {t("battery_percent")}
+            </div>
             <div className="text-lg font-bold text-pink-500">
-              {totalHomeLoad > 0 ? Math.round((batteryConsumption / totalHomeLoad) * 100) : 0}%
+              {totalHomeLoad > 0
+                ? Math.round((batteryConsumption / totalHomeLoad) * 100)
+                : 0}
+              %
             </div>
           </div>
           <div className="text-center space-y-1">
-            <div className="text-xs text-muted-foreground">{t("grid_percent")}</div>
+            <div className="text-xs text-muted-foreground">
+              {t("grid_percent")}
+            </div>
             <div className="text-lg font-bold text-blue-500">
-              {totalHomeLoad > 0 ? Math.round((gridConsumption / totalHomeLoad) * 100) : 0}%
+              {totalHomeLoad > 0
+                ? Math.round((gridConsumption / totalHomeLoad) * 100)
+                : 0}
+              %
             </div>
           </div>
         </div>
@@ -170,22 +179,32 @@ export default function ElectricityStatusCard({ data }: ElectricityStatusCardPro
         <div className="border-t border-border pt-4 space-y-2 text-xs text-muted-foreground">
           <div className="flex justify-between">
             <span>{t("total_home_load")}:</span>
-            <span className="font-semibold text-foreground">{formatPower(totalHomeLoad)}</span>
+            <span className="font-semibold text-foreground">
+              {formatPower(totalHomeLoad)}
+            </span>
           </div>
           <div className="flex justify-between">
             <span>{t("solar_generation")}:</span>
-            <span className="font-semibold text-foreground">{formatPower(totalPvPower)}</span>
+            <span className="font-semibold text-foreground">
+              {formatPower(totalPvPower)}
+            </span>
           </div>
           <div className="flex justify-between">
             <span>{t("battery_status")}:</span>
             <span className="font-semibold text-foreground">
-              {batteryPower > 0 ? t("charging") : batteryPower < 0 ? t("discharging") : t("idle")} ({formatPower(Math.abs(batteryPower))})
+              {batteryPower > 0
+                ? t("charging")
+                : batteryPower < 0
+                  ? t("discharging")
+                  : t("idle")}{" "}
+              ({formatPower(Math.abs(batteryPower))})
             </span>
           </div>
           <div className="flex justify-between">
             <span>{t("grid_status")}:</span>
             <span className="font-semibold text-foreground">
-              {isGridIncoming ? t("importing") : t("exporting")} ({formatPower(Math.abs(gridPower))})
+              {isGridIncoming ? t("importing") : t("exporting")} (
+              {formatPower(Math.abs(gridPower))})
             </span>
           </div>
         </div>
@@ -193,4 +212,3 @@ export default function ElectricityStatusCard({ data }: ElectricityStatusCardPro
     </Card>
   );
 }
-

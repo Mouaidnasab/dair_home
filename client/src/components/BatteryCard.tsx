@@ -25,10 +25,14 @@ interface BatteryCardProps {
 export default function BatteryCard({
   battery,
   loadW,
-  batteryCapacityWh = 10000,
+  batteryCapacityWh = 15000,
 }: BatteryCardProps) {
   const { t } = useTranslation();
-  const runtime = calculateEstimatedRuntime(battery.soc, loadW, batteryCapacityWh); // loadW now represents total load from both inverters
+  const runtime = calculateEstimatedRuntime(
+    battery.soc,
+    loadW,
+    batteryCapacityWh
+  ); // loadW now represents total load from both inverters
   const stateColor = getBatteryStateColor(battery.state);
   const stateLabel = getBatteryStateLabel(battery.state);
 
@@ -43,7 +47,9 @@ export default function BatteryCard({
             <Battery className="h-5 w-5" />
             {t("battery.title")}
           </CardTitle>
-          <Badge variant="outline">{t(`battery.${stateLabel.toLowerCase()}`)}</Badge>
+          <Badge variant="outline">
+            {t(`battery.${stateLabel.toLowerCase()}`)}
+          </Badge>
         </div>
       </CardHeader>
 
@@ -89,7 +95,9 @@ export default function BatteryCard({
               {/* Center content */}
               <div className="absolute inset-0 flex flex-col items-center justify-center">
                 <div className="text-4xl font-bold">{battery.soc}%</div>
-                <div className="text-xs text-muted-foreground">{t("battery.soc")}</div>
+                <div className="text-xs text-muted-foreground">
+                  {t("battery.soc")}
+                </div>
               </div>
             </div>
           </div>
@@ -99,7 +107,9 @@ export default function BatteryCard({
             <Tooltip>
               <TooltipTrigger asChild>
                 <div className="space-y-1 cursor-help">
-                  <div className="text-sm text-muted-foreground">{t("battery.power")}</div>
+                  <div className="text-sm text-muted-foreground">
+                    {t("battery.power")}
+                  </div>
                   <div className={`text-2xl font-semibold ${stateColor}`}>
                     {battery.powerW > 0 ? "+" : ""}
                     {formatPower(battery.powerW)}
@@ -117,7 +127,9 @@ export default function BatteryCard({
                 <div className="space-y-1 text-sm">
                   <p>{t("battery.info_positive")}</p>
                   <p>{t("battery.info_negative")}</p>
-                  <p>{t("battery.info_capacity")}: {batteryCapacityWh / 1000} kWh {t("battery.info_mock")}</p>
+                  <p>
+                    {t("battery.info_capacity")}: {batteryCapacityWh / 1000} kWh
+                  </p>
                 </div>
               </TooltipContent>
             </Tooltip>
@@ -125,13 +137,15 @@ export default function BatteryCard({
             <Tooltip>
               <TooltipTrigger asChild>
                 <div className="space-y-1 cursor-help">
-                  <div className="text-sm text-muted-foreground">{t("battery.runtime")}</div>
+                  <div className="text-sm text-muted-foreground">
+                    {t("battery.runtime")}
+                  </div>
                   <div className="flex items-center gap-2 text-2xl font-semibold">
                     <Zap className="h-5 w-5" />
                     {formatRuntime(runtime)}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    {t("battery.at_load")} {Math.round(loadW)} W (total from both inverters)
+                    {t("battery.at_load")} {Math.round(loadW)} W
                   </div>
                 </div>
               </TooltipTrigger>
@@ -148,4 +162,3 @@ export default function BatteryCard({
     </Card>
   );
 }
-

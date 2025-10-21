@@ -16,7 +16,11 @@ interface HeaderProps {
   onRefresh: () => void;
 }
 
-export default function Header({ lastUpdated, timezone, onRefresh }: HeaderProps) {
+export default function Header({
+  lastUpdated,
+  timezone,
+  onRefresh,
+}: HeaderProps) {
   const { theme, toggleTheme } = useTheme();
   const { t, i18n } = useTranslation();
 
@@ -24,8 +28,6 @@ export default function Header({ lastUpdated, timezone, onRefresh }: HeaderProps
     document.documentElement.lang = i18n.language;
     document.documentElement.dir = i18n.language === "ar" ? "rtl" : "ltr";
   }, [i18n.language]);
-
-
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -49,18 +51,20 @@ export default function Header({ lastUpdated, timezone, onRefresh }: HeaderProps
           <Tooltip>
             <TooltipTrigger asChild>
               <div className="text-sm text-muted-foreground cursor-help">
-                {formatAbsoluteTime(lastUpdated, timezone)}
+                {formatRelativeTime(lastUpdated)}
               </div>
             </TooltipTrigger>
             <TooltipContent side="bottom">
-              {formatRelativeTime(lastUpdated)}
+              {formatAbsoluteTime(lastUpdated, timezone)}
             </TooltipContent>
           </Tooltip>
 
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => i18n.changeLanguage(i18n.language === "en" ? "ar" : "en")}
+            onClick={() =>
+              i18n.changeLanguage(i18n.language === "en" ? "ar" : "en")
+            }
             title={i18n.language === "en" ? "العربية" : "English"}
           >
             <Globe className="h-5 w-5" />
@@ -86,4 +90,3 @@ export default function Header({ lastUpdated, timezone, onRefresh }: HeaderProps
     </header>
   );
 }
-
