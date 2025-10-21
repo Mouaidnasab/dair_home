@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sun, Home, Battery, Zap } from "lucide-react";
 import { formatPower, formatEnergy } from "@/lib/utils";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useTranslation } from "react-i18next";
 import { DashboardData } from "@/types/energy";
 
 interface EnergyDistributionCardProps {
@@ -9,7 +9,7 @@ interface EnergyDistributionCardProps {
 }
 
 export default function EnergyDistributionCard({ data }: EnergyDistributionCardProps) {
-  const { t } = useLanguage();
+  const { t } = useTranslation();
 
   // Calculate total PV power from both inverters
   const totalPvPower = data.inverters.groundFloor.pvNowW + data.inverters.firstFloor.pvNowW;
@@ -43,7 +43,7 @@ export default function EnergyDistributionCard({ data }: EnergyDistributionCardP
                 }`}
               />
               <span className="text-sm font-medium text-muted-foreground">
-                {isGridIncoming ? "Electricity incoming" : "No incoming electricity"}
+                {isGridIncoming ? t("energy_distribution.electricity_incoming") : t("energy_distribution.no_electricity_incoming")}
               </span>
             </div>
           </div>
@@ -175,14 +175,14 @@ export default function EnergyDistributionCard({ data }: EnergyDistributionCardP
           <div className="grid grid-cols-2 gap-6 w-full">
             {/* Solar */}
             <div className="flex flex-col items-center space-y-2">
-              <div className="text-sm text-muted-foreground">Solar</div>
+              <div className="text-sm text-muted-foreground">{t("energy_distribution.solar")}</div>
               <div className="text-xl font-bold text-yellow-500">{formatPower(totalPvPower)}</div>
             </div>
 
             {/* Grid */}
             <div className="flex flex-col items-center space-y-2">
               <div className="text-sm text-muted-foreground">
-                {isGridIncoming ? "Grid (In)" : "Grid (Out)"}
+                {isGridIncoming ? t("energy_distribution.grid_in") : t("energy_distribution.grid_out")}
               </div>
               <div className={`text-xl font-bold ${isGridIncoming ? "text-blue-500" : "text-green-500"}`}>
                 {formatPower(Math.abs(gridPower))}
@@ -191,14 +191,14 @@ export default function EnergyDistributionCard({ data }: EnergyDistributionCardP
 
             {/* Home Load */}
             <div className="flex flex-col items-center space-y-2">
-              <div className="text-sm text-muted-foreground">Home Load</div>
+              <div className="text-sm text-muted-foreground">{t("energy_distribution.home_load")}</div>
               <div className="text-xl font-bold text-red-500">{formatPower(totalHomeLoad)}</div>
             </div>
 
             {/* Battery */}
             <div className="flex flex-col items-center space-y-2">
               <div className="text-sm text-muted-foreground">
-                {batteryPower > 0 ? "Battery (↑ Charging)" : "Battery (↓ Discharging)"}
+                {batteryPower > 0 ? t("energy_distribution.battery_charging") : t("energy_distribution.battery_discharging")}
               </div>
               <div className={`text-xl font-bold ${batteryPower > 0 ? "text-green-500" : "text-pink-500"}`}>
                 {formatPower(Math.abs(batteryPower))}
@@ -210,19 +210,19 @@ export default function EnergyDistributionCard({ data }: EnergyDistributionCardP
           <div className="w-full border-t border-border pt-4 space-y-2 text-xs text-muted-foreground">
             <div className="flex items-center gap-2">
               <div className="h-2 w-4 bg-yellow-500 rounded" />
-              <span>Solar generation</span>
+              <span>{t("energy_distribution.solar_generation")}</span>
             </div>
             <div className="flex items-center gap-2">
               <div className={`h-2 w-4 rounded ${isGridIncoming ? "bg-blue-500" : "bg-green-500"}`} />
-              <span>{isGridIncoming ? "Grid import" : "Grid export"}</span>
+              <span>{isGridIncoming ? t("energy_distribution.grid_import") : t("energy_distribution.grid_export")}</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="h-2 w-4 bg-red-500 rounded" />
-              <span>Home consumption</span>
+              <span>{t("energy_distribution.home_consumption")}</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="h-2 w-4 bg-pink-500 rounded" />
-              <span>Battery charge/discharge</span>
+              <span>{t("energy_distribution.battery_charge_discharge")}</span>
             </div>
           </div>
         </div>

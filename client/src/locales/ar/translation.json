@@ -18,5 +18,19 @@
   "idle": "خامل",
   "grid_status": "حالة الشبكة",
   "importing": "استيراد",
-  "exporting": "تصدير"
+  "exporting": "تصدير",
+  "energy_distribution.title": "توزيع الطاقة",
+  "energy_distribution.electricity_incoming": "الكهرباء واردة",
+  "energy_distribution.no_electricity_incoming": "لا توجد كهرباء واردة",
+  "energy_distribution.solar": "الطاقة الشمسية",
+  "energy_distribution.grid_in": "الشبكة (وارد)",
+  "energy_distribution.grid_out": "الشبكة (صادر)",
+  "energy_distribution.home_load": "حمل المنزل",
+  "energy_distribution.battery_charging": "البطارية (↑ شحن)",
+  "energy_distribution.battery_discharging": "البطارية (↓ تفريغ)",
+  "energy_distribution.solar_generation": "توليد الطاقة الشمسية",
+  "energy_distribution.grid_import": "استيراد من الشبكة",
+  "energy_distribution.grid_export": "تصدير إلى الشبكة",
+  "energy_distribution.home_consumption": "استهلاك المنزل",
+  "energy_distribution.battery_charge_discharge": "شحن/تفريغ البطارية"
 }

@@ -18,5 +18,19 @@
   "idle": "Idle",
   "grid_status": "Grid Status",
   "importing": "Importing",
-  "exporting": "Exporting"
+  "exporting": "Exporting",
+  "energy_distribution.title": "Energy Distribution",
+  "energy_distribution.electricity_incoming": "Electricity incoming",
+  "energy_distribution.no_electricity_incoming": "No incoming electricity",
+  "energy_distribution.solar": "Solar",
+  "energy_distribution.grid_in": "Grid (In)",
+  "energy_distribution.grid_out": "Grid (Out)",
+  "energy_distribution.home_load": "Home Load",
+  "energy_distribution.battery_charging": "Battery (↑ Charging)",
+  "energy_distribution.battery_discharging": "Battery (↓ Discharging)",
+  "energy_distribution.solar_generation": "Solar generation",
+  "energy_distribution.grid_import": "Grid import",
+  "energy_distribution.grid_export": "Grid export",
+  "energy_distribution.home_consumption": "Home consumption",
+  "energy_distribution.battery_charge_discharge": "Battery charge/discharge"
 }
