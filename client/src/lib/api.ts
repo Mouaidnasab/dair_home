@@ -27,7 +27,7 @@ export async function fetchLatestByLabel(label: string): Promise<EnergyRecord> {
 
     return transformApiRecord(result.rows[0]);
   } catch (error) {
-    console.error("Failed to fetch latest data:", error);
+    console.error("Failed to fetch latest data:", error); debugger;
     throw error;
   }
 }
@@ -55,7 +55,7 @@ export async function fetchTimeSeries(
     if (!result.rows) return [];
     return result.rows.map(transformApiRecord);
   } catch (error) {
-    console.error("Failed to fetch time-series data:", error);
+    console.error("Failed to fetch time-series data:", error); debugger;
     throw error;
   }
 }
@@ -81,7 +81,7 @@ function transformApiRecord(row: any): EnergyRecord {
     pd_countryName: row.pd_countryName || "",
     pd_cityName: row.pd_cityName || "",
     pd_status: row.pd_status || "N",
-    ef_emsSoc: parseFloat(row.ef_emsSoc) || 0,
+    ef_emsSoc: row.ef_emsSoc !== null && row.ef_emsSoc !== undefined ? parseFloat(row.ef_emsSoc) : 0,
     ef_acTotalOutActPower: parseFloat(row.ef_acTotalOutActPower) || 0,
     ef_emsPower: parseFloat(row.ef_emsPower) || 0,
     ef_genPower: parseFloat(row.ef_genPower) || 0,
@@ -150,6 +150,9 @@ function buildDashboardData(groundFloor: EnergyRecord, firstFloor: EnergyRecord)
     },
     currency: groundFloor.pd_currency,
     lastUpdated: groundFloor.timestamp,
+    grid: {
+      isPowerOn: groundFloor.ef_acTtlInPower > 0 || firstFloor.ef_acTtlInPower > 0,
+    },
   };
 }
 
@@ -165,7 +168,7 @@ export async function fetchDashboardData(): Promise<DashboardData> {
 
     return buildDashboardData(groundFloor, firstFloor);
   } catch (error) {
-    console.error("Failed to fetch dashboard data:", error);
+    console.error("Failed to fetch dashboard data:", error); debugger;
     throw error;
   }
 }
@@ -184,12 +187,12 @@ export async function fetchTrendsData(): Promise<TrendsSeries> {
     const convertToTimeSeriesPoints = (records: EnergyRecord[]) =>
       records.map((r) => ({
         timestamp: r.timestamp,
-        homePvPower: r.pd_pvTotalPower,
-        loadPower: r.ef_ctThreePhaseTotalPower || r.ef_acTotalOutActPower,
-        batteryPower: r.ef_emsPower,
-        gridPower: r.ef_acTtlInPower,
-        genPower: r.ef_genPower,
-        batterySoc: r.ef_emsSoc,
+        homePvPower: r.pd_pvTotalPower || 0,
+        loadPower: (r.ef_ctThreePhaseTotalPower || r.ef_acTotalOutActPower) || 0,
+        batteryPower: r.ef_emsPower || 0,
+        gridPower: r.ef_acTtlInPower || 0,
+        genPower: r.ef_genPower || 0,
+        batterySoc: r.ef_emsSoc || 0,
       }));
 
     return {
@@ -198,7 +201,7 @@ export async function fetchTrendsData(): Promise<TrendsSeries> {
       firstFloor: convertToTimeSeriesPoints(firstFloorSeries),
     };
   } catch (error) {
-    console.error("Failed to fetch trends data:", error);
+    console.error("Failed to fetch trends data:", error); debugger;
     throw error;
   }
 }

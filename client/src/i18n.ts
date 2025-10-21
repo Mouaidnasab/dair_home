@@ -19,6 +19,7 @@ i18n
       },
     },
     fallbackLng: 'en',
+
     debug: true,
     interpolation: {
       escapeValue: false, // react already escapes by default

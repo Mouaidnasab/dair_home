@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useTranslation } from "react-i18next";
 import { formatTime } from "@/lib/utils";
 
 interface ElectricityInterval {
@@ -17,7 +17,7 @@ export default function GovernmentElectricityCard({
   intervals,
   totalHours,
 }: GovernmentElectricityCardProps) {
-  const { t } = useLanguage();
+  const { t } = useTranslation();
 
   return (
     <Card>

@@ -13,7 +13,7 @@ import {
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useTranslation } from "react-i18next";
 import { TimeSeriesPoint } from "@/types/energy";
 import { formatPower, formatEnergy } from "@/lib/utils";
 
@@ -57,7 +57,7 @@ export default function TrendsCard({
   groundFloorSeries,
   firstFloorSeries,
 }: TrendsCardProps) {
-  const { t } = useLanguage();
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState("home");
 
   const renderChart = (data: TimeSeriesPoint[]) => {

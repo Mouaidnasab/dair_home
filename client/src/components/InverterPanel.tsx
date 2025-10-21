@@ -11,7 +11,7 @@ import {
   formatEnergy,
   getStatusColor,
 } from "@/lib/utils";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useTranslation } from "react-i18next";
 import { InverterData } from "@/types/energy";
 
 interface InverterPanelProps {
@@ -25,7 +25,7 @@ export default function InverterPanel({
   data,
   sparklineData,
 }: InverterPanelProps) {
-  const { t } = useLanguage();
+  const { t } = useTranslation();
   const testId = title === "Ground Floor" ? "inverter-ground" : "inverter-first";
 
   return (

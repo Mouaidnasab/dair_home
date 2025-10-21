@@ -1,4 +1,4 @@
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useTranslation } from "react-i18next";
 
 interface FooterProps {
   location: {
@@ -9,7 +9,7 @@ interface FooterProps {
 }
 
 export default function Footer({ location, currency }: FooterProps) {
-  const { t } = useLanguage();
+  const { t } = useTranslation();
 
   return (
     <footer className="border-t border-border bg-muted/30 py-6">

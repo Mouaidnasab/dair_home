@@ -13,7 +13,7 @@ import {
   getBatteryStateColor,
   getBatteryStateLabel,
 } from "@/lib/utils";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useTranslation } from "react-i18next";
 import { BatteryData } from "@/types/energy";
 
 interface BatteryCardProps {
@@ -27,7 +27,7 @@ export default function BatteryCard({
   loadW,
   batteryCapacityWh = 10000,
 }: BatteryCardProps) {
-  const { t } = useLanguage();
+  const { t } = useTranslation();
   const runtime = calculateEstimatedRuntime(battery.soc, loadW, batteryCapacityWh); // loadW now represents total load from both inverters
   const stateColor = getBatteryStateColor(battery.state);
   const stateLabel = getBatteryStateLabel(battery.state);

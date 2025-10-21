@@ -8,6 +8,7 @@ import {
 import { useTheme } from "@/contexts/ThemeContext";
 import { useTranslation } from "react-i18next";
 import { formatRelativeTime, formatAbsoluteTime } from "@/lib/utils";
+import { useEffect } from "react";
 
 interface HeaderProps {
   lastUpdated: string;
@@ -18,6 +19,11 @@ interface HeaderProps {
 export default function Header({ lastUpdated, timezone, onRefresh }: HeaderProps) {
   const { theme, toggleTheme } = useTheme();
   const { t, i18n } = useTranslation();
+
+  useEffect(() => {
+    document.documentElement.lang = i18n.language;
+    document.documentElement.dir = i18n.language === "ar" ? "rtl" : "ltr";
+  }, [i18n.language]);
 
 
 

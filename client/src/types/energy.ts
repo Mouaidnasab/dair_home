@@ -93,6 +93,9 @@ export interface DashboardData {
   };
   currency: string;
   lastUpdated: string;
+  grid: {
+    isPowerOn: boolean;
+  };
 }
 
 export interface TrendsSeries {
