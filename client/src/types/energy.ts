@@ -7,7 +7,7 @@ export interface EnergyRecord {
   timestamp: string;
   plantId: string;
   plantLabel: string;
-  
+
   // PV/Solar Data
   pd_pvTotalPower: number; // W (instant PV power)
   pd_ratedPower: number; // kWp (array size)
@@ -19,30 +19,30 @@ export interface EnergyRecord {
   pd_monthPvIncome: number; // currency amount
   pd_yearPvIncome: number; // currency amount
   pd_currency: string; // e.g., "SYP"
-  
+
   // Location & Status
   pd_countryName: string;
   pd_cityName: string;
   pd_status: string; // "N" = Normal, others = Warning/Fault
   pd_installDateStr: string;
   pd_timeZone: string;
-  
+
   // Battery/EMS Data (shared across inverters)
   ef_emsSoc: number; // % battery SOC
   ef_acTotalOutActPower: number; // W load instant
   ef_emsPower: number; // W battery charge(+)/discharge(-) power
-  
+
   // Grid/Gen/Meter Data
   ef_genPower: number; // W generator input
   ef_acTtlInPower: number; // W grid input
   ef_meterPower: number; // W import/export at meter
   ef_microInvTotalPower: number; // W micro-inverters
   ef_ctThreePhaseTotalPower: number; // W measured load
-  
+
   // Device Info
   ef_deviceSn: string;
   ef_deviceModel: string;
-  
+
   // Pricing
   pd_electricityPrice: number; // local price per kWh
 }
@@ -53,6 +53,7 @@ export interface InverterData {
   todayKWh: number;
   ratedKwp: number;
   loadW: number;
+  batteryW: number;
 
   gridW: number;
   incomeToday: number;
@@ -103,4 +104,3 @@ export interface TrendsSeries {
   groundFloor: TimeSeriesPoint[];
   firstFloor: TimeSeriesPoint[];
 }
-

@@ -5,7 +5,6 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-
 /**
  * Format relative time (e.g., "2 minutes ago")
  */
@@ -23,7 +22,10 @@ export function formatRelativeTime(date: Date | string): string {
 /**
  * Format absolute time with timezone
  */
-export function formatAbsoluteTime(date: Date | string, timezone?: string): string {
+export function formatAbsoluteTime(
+  date: Date | string,
+  timezone?: string
+): string {
   const d = typeof date === "string" ? new Date(date) : date;
   const timeStr = d.toLocaleTimeString("en-US", {
     hour: "2-digit",
@@ -93,6 +95,7 @@ export function calculateEstimatedRuntime(
   loadW: number,
   batteryCapacityWh: number = 10000
 ): number {
+  loadW = loadW * -1;
   if (loadW <= 0) return Infinity;
   const energyAvailableWh = (socPercent / 100) * batteryCapacityWh;
   return energyAvailableWh / loadW;
@@ -128,7 +131,9 @@ export function getStatusColor(status: "normal" | "warning" | "fault"): string {
 /**
  * Get battery state color
  */
-export function getBatteryStateColor(state: "idle" | "charging" | "discharging"): string {
+export function getBatteryStateColor(
+  state: "idle" | "charging" | "discharging"
+): string {
   switch (state) {
     case "charging":
       return "text-green-600 dark:text-green-400";
@@ -142,7 +147,9 @@ export function getBatteryStateColor(state: "idle" | "charging" | "discharging")
 /**
  * Get battery state label
  */
-export function getBatteryStateLabel(state: "idle" | "charging" | "discharging"): string {
+export function getBatteryStateLabel(
+  state: "idle" | "charging" | "discharging"
+): string {
   switch (state) {
     case "charging":
       return "Charging";
@@ -164,4 +171,3 @@ export function formatTime(date: Date | string): string {
     hour12: true,
   });
 }
-

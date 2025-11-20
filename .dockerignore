@@ -1,0 +1,28 @@
+# Exclude everything by default
+**
+!Dockerfile
+
+# root files needed for install/build
+!package.json
+!pnpm-lock.yaml
+!vite.config.*
+!tsconfig*.json
+!.npmrc
+!pnpm-workspace.yaml
+
+# allow patches used by pnpm
+!patches/**
+
+# your client app
+!client/index.html
+!client/public/**
+!client/src/**
+
+# re-exclude junk
+node_modules
+client/node_modules
+dist
+client/dist
+.git
+.DS_Store
+*.log

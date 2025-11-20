@@ -36,7 +36,9 @@ export default function Header({
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-amber-500 to-orange-600">
             <Sun className="h-5 w-5 text-white" />
           </div>
-          <h1 className="text-xl font-bold tracking-tight">Dair Home</h1>
+          <h1 className="text-xl font-bold tracking-tight">
+            {t("common.title")}
+          </h1>
         </div>
 
         <div className="flex items-center gap-4">

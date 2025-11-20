@@ -1,4 +1,4 @@
-import { Sun, Zap, Plug } from "lucide-react";
+import { Sun, Zap, Plug, Battery } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -6,11 +6,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {
-  formatPower,
-  formatEnergy,
-  getStatusColor,
-} from "@/lib/utils";
+import { formatPower, formatEnergy, getStatusColor } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import { InverterData } from "@/types/energy";
 
@@ -26,7 +22,8 @@ export default function InverterPanel({
   sparklineData,
 }: InverterPanelProps) {
   const { t } = useTranslation();
-  const testId = title === "Ground Floor" ? "inverter-ground" : "inverter-first";
+  const testId =
+    title === "Ground Floor" ? "inverter-ground" : "inverter-first";
 
   return (
     <Card data-testid={testId}>
@@ -56,8 +53,12 @@ export default function InverterPanel({
           </div>
 
           <div className="space-y-1">
-            <div className="text-sm text-muted-foreground">{t("inverter.today")}</div>
-            <div className="text-2xl font-bold">{formatEnergy(data.todayKWh)}</div>
+            <div className="text-sm text-muted-foreground">
+              {t("inverter.today")}
+            </div>
+            <div className="text-2xl font-bold">
+              {formatEnergy(data.todayKWh)}
+            </div>
           </div>
 
           <div className="space-y-1">
@@ -69,8 +70,19 @@ export default function InverterPanel({
           </div>
 
           <div className="space-y-1">
-            <div className="text-sm text-muted-foreground">{t("inverter.rated_power")}</div>
-            <div className="text-lg font-semibold">{data.ratedKwp} kWp</div>
+            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+              <Battery className="h-4 w-4" />
+              {t("energy_distribution.battery_charge_discharge")}
+            </div>
+            <div className="text-2xl font-bold">{data.batteryW} W</div>
+          </div>
+
+          <div className="space-y-1">
+            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+              <Zap className="h-4 w-4" />
+              {t("inverter.grid")}
+            </div>
+            <div className="text-2xl font-bold">{formatPower(data.gridW)}</div>
           </div>
         </div>
 
@@ -83,4 +95,3 @@ export default function InverterPanel({
     </Card>
   );
 }
-

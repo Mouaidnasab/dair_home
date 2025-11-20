@@ -11,30 +11,54 @@ interface ElectricityInterval {
 interface GovernmentElectricityCardProps {
   intervals: ElectricityInterval[];
   totalHours: number;
+  viewDate?: Date; // ← added from Home
 }
 
 export default function GovernmentElectricityCard({
   intervals,
   totalHours,
+  viewDate,
 }: GovernmentElectricityCardProps) {
   const { t } = useTranslation();
 
+  const isToday = viewDate
+    ? new Date().toDateString() === viewDate.toDateString()
+    : true;
+
+  const formattedDate = viewDate
+    ? viewDate.toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      })
+    : "";
+
   return (
-    <Card>
-      <CardHeader className="pb-4">
+    <Card className="relative overflow-hidden">
+      <CardHeader className="pb-4 flex items-start justify-between">
         <CardTitle>{t("government.title")}</CardTitle>
+
+        {/* Date Badge */}
+        <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+          {isToday ? t("common.today", "Today") : formattedDate}
+        </span>
       </CardHeader>
 
       <CardContent className="space-y-6">
-        {/* Today's Total */}
+        {/* Total hours */}
         <div className="space-y-1">
-          <div className="text-sm text-muted-foreground">{t("government.today")}</div>
+          <div className="text-sm text-muted-foreground">
+            {isToday ? t("government.today") : t("government.viewing_day")}
+          </div>
           <div className="text-3xl font-bold">{totalHours.toFixed(1)}h</div>
         </div>
 
-        {/* Intervals List */}
+        {/* Intervals list */}
         <div className="space-y-3 border-t border-border pt-4">
-          <div className="text-sm font-semibold">{t("government.intervals")}</div>
+          <div className="text-sm font-semibold">
+            {t("government.intervals")}
+          </div>
+
           {intervals.length === 0 ? (
             <div className="text-sm text-muted-foreground">
               {t("government.no_intervals")}
@@ -50,7 +74,8 @@ export default function GovernmentElectricityCard({
                     <div className="h-2 w-2 rounded-full bg-green-500" />
                     <div>
                       <div className="font-medium">
-                        {formatTime(interval.startTime)} - {formatTime(interval.endTime)}
+                        {formatTime(interval.startTime)} –{" "}
+                        {formatTime(interval.endTime)}
                       </div>
                       <div className="text-xs text-muted-foreground">
                         {interval.duration} {t("government.duration_min")}
@@ -66,4 +91,3 @@ export default function GovernmentElectricityCard({
     </Card>
   );
 }
-

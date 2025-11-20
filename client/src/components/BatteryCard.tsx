@@ -30,7 +30,7 @@ export default function BatteryCard({
   const { t } = useTranslation();
   const runtime = calculateEstimatedRuntime(
     battery.soc,
-    loadW,
+    battery.powerW,
     batteryCapacityWh
   ); // loadW now represents total load from both inverters
   const stateColor = getBatteryStateColor(battery.state);
@@ -145,7 +145,7 @@ export default function BatteryCard({
                     {formatRuntime(runtime)}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    {t("battery.at_load")} {Math.round(loadW)} W
+                    {t("battery.at_load")} {Math.round(battery.powerW) * -1} W
                   </div>
                 </div>
               </TooltipTrigger>

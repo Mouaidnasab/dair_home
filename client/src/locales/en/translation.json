@@ -59,10 +59,12 @@
   "government.intervals": "Intervals",
   "government.no_intervals": "No Intervals",
   "government.duration_min": "Duration (min)",
+  "government.viewing_day": "Viewing Day",
   "inverter.pv_now": "PV Now",
   "inverter.today": "Today",
   "inverter.load": "Load",
   "inverter.rated_power": "Rated Power",
+  "inverter.grid": "Grid",
   "trends.no_data": "No Data",
   "trends.power_label": "Power",
   "trends.soc_label": "State of Charge",
@@ -78,5 +80,7 @@
   "trends.home_desc": "Total home power consumption",
   "trends.floor_desc": "Floor consumption",
   "trends.soc_desc": "Battery state of charge",
-  "error.failed_fetch": "Failed to fetch data"
+  "error.failed_fetch": "Failed to fetch data",
+  "common.today": "Today",
+  "common.title": "Deyr Atiyah Villa"
 }
