@@ -1,6 +1,6 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Sun, Home, Battery, Zap } from "lucide-react";
-import { formatPower, formatEnergy } from "@/lib/utils";
+import { Card, CardContent } from "@/components/ui/card";
+import { Sun, Home, Battery, Zap, ZapOff } from "lucide-react";
+import { cn, formatPower, getBatteryColor } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import { DashboardData } from "@/types/energy";
 
@@ -8,221 +8,214 @@ interface EnergyDistributionCardProps {
   data: DashboardData;
 }
 
-export default function EnergyDistributionCard({ data }: EnergyDistributionCardProps) {
+export default function EnergyDistributionCard({
+  data,
+}: EnergyDistributionCardProps) {
   const { t } = useTranslation();
 
-  // Calculate total PV power from both inverters
-  const totalPvPower = data.inverters.groundFloor.pvNowW + data.inverters.firstFloor.pvNowW;
-  
-  // Calculate total home load from both inverters
-  const totalHomeLoad = data.inverters.groundFloor.loadW + data.inverters.firstFloor.loadW;
-  
-  // Grid power (positive = importing, negative = exporting)
-  const gridPower = data.inverters.groundFloor.gridW + data.inverters.firstFloor.gridW;
-  
-  // Battery power (positive = charging, negative = discharging)
-  const batteryPower = data.battery.powerW;
+  // 1. Data Aggregation
+  const totalPvPower =
+    data.inverters.groundFloor.pvNowW + data.inverters.firstFloor.pvNowW;
+  const totalHomeLoad =
+    data.inverters.groundFloor.loadW + data.inverters.firstFloor.loadW;
+  const gridPower =
+    data.inverters.groundFloor.gridW + data.inverters.firstFloor.gridW; // + = Import, - = Export
+  const batteryPower = data.battery.powerW; // + = Charging, - = Discharging
+  const soc = data.battery.soc;
 
-  // Determine if electricity is coming from grid (positive grid power)
-  const isGridIncoming = gridPower > 0;
+  // 2. Flow Detection
+  const hasSolar = totalPvPower > 10;
+  const hasGridImport = gridPower > 10;
+  const hasGridExport = gridPower < -10;
+  const hasBatteryCharge = batteryPower > 10;
+  const hasBatteryDischarge = batteryPower < -10;
+  const hasHomeLoad = totalHomeLoad > 10;
+
+  // 3. Logic: Where is the energy going? (Simplified Flow Model)
+  const isSolarToHome = hasSolar && hasHomeLoad;
+  const isSolarToBattery = hasSolar && hasBatteryCharge;
+  const isSolarToGrid = hasSolar && hasGridExport;
+
+  const isGridToHome = hasGridImport && totalHomeLoad > totalPvPower;
+  const isGridToBattery = hasGridImport && hasBatteryCharge && !hasSolar;
+
+  const isBatteryToHome = hasBatteryDischarge && hasHomeLoad;
+  const isBatteryToGrid = hasBatteryDischarge && hasGridExport;
 
   return (
-    <Card className="col-span-full" data-testid="energy-distribution">
-      <CardHeader>
-        <CardTitle>{t("energy_distribution.title") || "Energy Distribution"}</CardTitle>
-      </CardHeader>
+    <Card
+      className="col-span-full overflow-hidden relative border shadow-sm transition-shadow hover:shadow-md h-full"
+      data-testid="energy-distribution"
+    >
+      {/* Dynamic Background Glow */}
+      <div className="absolute inset-0 pointer-events-none transition-opacity duration-1000 opacity-20 dark:opacity-10">
+        <div
+          className={`absolute -top-1/2 left-1/4 w-1/2 h-full bg-yellow-400/30 blur-[100px] transition-all duration-1000 ${hasSolar ? "scale-100 opacity-100" : "scale-50 opacity-0"}`}
+        />
+        <div
+          className={`absolute -bottom-1/2 right-1/4 w-1/2 h-full bg-cyan-400/30 blur-[100px] transition-all duration-1000 ${hasHomeLoad ? "scale-100 opacity-100" : "scale-50 opacity-0"}`}
+        />
+        <div
+          className={`absolute top-1/4 -left-1/4 w-1/2 h-1/2 bg-blue-500/30 blur-[100px] transition-all duration-1000 ${hasGridImport ? "scale-100 opacity-100" : "scale-50 opacity-0"}`}
+        />
+      </div>
 
-      <CardContent>
-        <div className="flex flex-col items-center justify-center space-y-8">
-          {/* Title and Indicator */}
-          <div className="text-center space-y-2">
-            <div className="flex items-center justify-center gap-2">
-              <div
-                className={`h-3 w-3 rounded-full ${
-                  isGridIncoming ? "bg-blue-500 animate-pulse" : "bg-gray-500"
-                }`}
-              />
-              <span className="text-sm font-medium text-muted-foreground">
-                {isGridIncoming ? t("energy_distribution.electricity_incoming") : t("energy_distribution.no_electricity_incoming")}
-              </span>
-            </div>
-          </div>
-
-          {/* Energy Flow Diagram */}
-          <div className="relative w-full h-96 flex items-center justify-center">
+      <CardContent className="p-6 relative">
+        {/* Electricity Status Indicator (Moved from Header) */}
+        {/* Responsive Aspect Ratio Container */}
+        <div className="relative w-full aspect-video">
+          {/* Layer 1: SVG Flow Lines (Background) */}
+          <div className="absolute inset-0">
             <svg
-              viewBox="0 0 400 400"
-              className="w-full h-full max-w-md"
-              preserveAspectRatio="xMidYMid meet"
+              viewBox="0 0 400 225"
+              className="w-full h-full"
+              style={{ overflow: "visible" }}
             >
-              {/* Connection lines */}
-              {/* Solar to Home */}
-              <line
-                x1="200"
-                y1="80"
-                x2="200"
-                y2="140"
-                stroke="#fbbf24"
-                strokeWidth="3"
-              />
-              {/* Solar to Battery */}
-              <line
-                x1="200"
-                y1="80"
-                x2="200"
-                y2="280"
-                stroke="#fbbf24"
-                strokeWidth="3"
-              />
-              {/* Grid to Home */}
-              <line
-                x1="80"
-                y1="200"
-                x2="140"
-                y2="200"
-                stroke={isGridIncoming ? "#3b82f6" : "#10b981"}
-                strokeWidth="3"
-              />
-              {/* Home to Battery */}
-              <line
-                x1="200"
-                y1="200"
-                x2="200"
-                y2="280"
-                stroke="#ef4444"
-                strokeWidth="3"
-              />
-              {/* Battery to Grid */}
-              <line
-                x1="200"
-                y1="320"
-                x2="80"
-                y2="320"
-                stroke={batteryPower > 0 ? "#3b82f6" : "#10b981"}
-                strokeWidth="3"
-              />
-              {/* Home to Grid */}
-              <line
-                x1="200"
-                y1="200"
-                x2="80"
-                y2="200"
-                stroke={totalPvPower > totalHomeLoad ? "#10b981" : "#3b82f6"}
-                strokeWidth="3"
+              <defs>
+                <linearGradient
+                  id="gradient-yellow"
+                  x1="0"
+                  y1="0"
+                  x2="1"
+                  y2="1"
+                >
+                  <stop offset="0%" stopColor="#EAB308" stopOpacity="0.4" />
+                  <stop offset="100%" stopColor="#EAB308" stopOpacity="0.1" />
+                </linearGradient>
+              </defs>
+
+              {/* 1. Solar -> Home (Updated start y to 56) */}
+              <FlowPath
+                active={isSolarToHome}
+                d="M200,56 C200,80 340,80 340,113"
+                color="text-yellow-500"
               />
 
-              {/* Connection dots */}
-              <circle cx="200" cy="140" r="4" fill="#fbbf24" />
-              <circle cx="140" cy="200" r="4" fill={isGridIncoming ? "#3b82f6" : "#10b981"} />
-              <circle cx="200" cy="200" r="6" fill="#ef4444" />
-              <circle cx="200" cy="280" r="4" fill="#fbbf24" />
-
-              {/* Solar Circle (Top) */}
-              <circle
-                cx="200"
-                cy="60"
-                r="35"
-                fill="none"
-                stroke="#fbbf24"
-                strokeWidth="3"
+              {/* 2. Solar -> Battery (Updated start y to 56) */}
+              <FlowPath
+                active={isSolarToBattery}
+                d="M200,56 L200,191"
+                color="text-yellow-500"
               />
-              <g transform="translate(200, 60)">
-                <Sun className="h-6 w-6 text-yellow-500" x="-12" y="-12" />
-              </g>
 
-              {/* Grid Circle (Left) */}
-              <circle
-                cx="80"
-                cy="200"
-                r="35"
-                fill="none"
-                stroke={isGridIncoming ? "#3b82f6" : "#10b981"}
-                strokeWidth="3"
+              {/* 3. Solar -> Grid (Updated start y to 56) */}
+              <FlowPath
+                active={isSolarToGrid}
+                d="M200,56 C200,80 60,80 60,113"
+                color="text-yellow-500"
               />
-              <g transform="translate(80, 200)">
-                <Zap className="h-6 w-6 text-blue-500" x="-12" y="-12" />
-              </g>
 
-              {/* Home Circle (Right) */}
-              <circle
-                cx="320"
-                cy="200"
-                r="35"
-                fill="none"
-                stroke="#06b6d4"
-                strokeWidth="3"
+              {/* 4. Grid -> Home */}
+              <FlowPath
+                active={isGridToHome}
+                d="M60,113 L340,113"
+                color="text-blue-500"
+                dashed
               />
-              <g transform="translate(320, 200)">
-                <Home className="h-6 w-6 text-cyan-500" x="-12" y="-12" />
-              </g>
 
-              {/* Battery Circle (Bottom) */}
-              <circle
-                cx="200"
-                cy="320"
-                r="35"
-                fill="none"
-                stroke="#ec4899"
-                strokeWidth="3"
+              {/* 5. Grid -> Battery */}
+              <FlowPath
+                active={isGridToBattery}
+                d="M60,113 C60,153 200,153 200,191"
+                color="text-blue-500"
               />
-              <g transform="translate(200, 320)">
-                <Battery className="h-6 w-6 text-pink-500" x="-12" y="-12" />
-              </g>
+
+              {/* 6. Battery -> Home */}
+              <FlowPath
+                active={isBatteryToHome}
+                d="M200,191 C200,153 340,153 340,113"
+                color="text-pink-500"
+              />
             </svg>
           </div>
 
-          {/* Energy Values Grid */}
-          <div className="grid grid-cols-2 gap-6 w-full">
-            {/* Solar */}
-            <div className="flex flex-col items-center space-y-2">
-              <div className="text-sm text-muted-foreground">{t("energy_distribution.solar")}</div>
-              <div className="text-xl font-bold text-yellow-500">{formatPower(totalPvPower)}</div>
+          {/* Layer 2: HTML Nodes (Foreground) */}
+          <div className="absolute inset-0 pointer-events-none">
+            {/* Solar Node (Top Center: 50% 25% - pushed down to avoid overlap) */}
+            <div className="absolute top-[25%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-0 h-0">
+              <EnergyNode
+                icon={Sun}
+                label={t("energy_distribution.solar")}
+                value={totalPvPower}
+                colorClass="text-yellow-500"
+                bgClass="bg-yellow-500/10"
+                borderClass="border-yellow-500"
+                active={hasSolar}
+              />
             </div>
 
-            {/* Grid */}
-            <div className="flex flex-col items-center space-y-2">
-              <div className="text-sm text-muted-foreground">
-                {isGridIncoming ? t("energy_distribution.grid_in") : t("energy_distribution.grid_out")}
-              </div>
-              <div className={`text-xl font-bold ${isGridIncoming ? "text-blue-500" : "text-green-500"}`}>
-                {formatPower(Math.abs(gridPower))}
-              </div>
+            {/* Grid Node (Left Center: 15% 50%) */}
+            <div className="absolute top-1/2 left-[15%] -translate-x-1/2 -translate-y-1/2 w-0 h-0">
+              <EnergyNode
+                icon={Zap}
+                label={t("energy_distribution.grid")}
+                value={Math.abs(gridPower)}
+                colorClass={hasGridExport ? "text-green-500" : "text-blue-500"}
+                bgClass={hasGridExport ? "bg-green-500/10" : "bg-blue-500/10"}
+                borderClass={
+                  hasGridExport ? "border-green-500" : "border-blue-500"
+                }
+                active={hasGridImport || hasGridExport}
+                subLabel={
+                  hasGridExport
+                    ? t("energy_distribution.export")
+                    : hasGridImport
+                      ? t("energy_distribution.import")
+                      : ""
+                }
+              >
+                {/* Electricity Status Overlay (Top-Right of Grid Icon) */}
+                <div
+                  className={cn(
+                    "absolute -top-3 -right-3 z-30 px-1.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider transition-all duration-500 shadow-sm border bg-background/90 backdrop-blur-sm",
+                    data.grid.isPowerOn
+                      ? "text-green-600 border-green-500/20"
+                      : "text-red-600 border-red-500/20",
+                  )}
+                >
+                  {data.grid.isPowerOn ? "ON" : "OFF"}
+                </div>
+              </EnergyNode>
             </div>
 
-            {/* Home Load */}
-            <div className="flex flex-col items-center space-y-2">
-              <div className="text-sm text-muted-foreground">{t("energy_distribution.home_load")}</div>
-              <div className="text-xl font-bold text-red-500">{formatPower(totalHomeLoad)}</div>
+            {/* Home Node (Right Center: 85% 50%) */}
+            <div className="absolute top-1/2 left-[85%] -translate-x-1/2 -translate-y-1/2 w-0 h-0">
+              <EnergyNode
+                icon={Home}
+                label={t("energy_distribution.home_load")}
+                value={totalHomeLoad}
+                colorClass="text-cyan-500"
+                bgClass="bg-cyan-500/10"
+                borderClass="border-cyan-500"
+                active={hasHomeLoad}
+              />
             </div>
 
-            {/* Battery */}
-            <div className="flex flex-col items-center space-y-2">
-              <div className="text-sm text-muted-foreground">
-                {batteryPower > 0 ? t("energy_distribution.battery_charging") : t("energy_distribution.battery_discharging")}
-              </div>
-              <div className={`text-xl font-bold ${batteryPower > 0 ? "text-green-500" : "text-pink-500"}`}>
-                {formatPower(Math.abs(batteryPower))}
-              </div>
-            </div>
-          </div>
-
-          {/* Legend */}
-          <div className="w-full border-t border-border pt-4 space-y-2 text-xs text-muted-foreground">
-            <div className="flex items-center gap-2">
-              <div className="h-2 w-4 bg-yellow-500 rounded" />
-              <span>{t("energy_distribution.solar_generation")}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className={`h-2 w-4 rounded ${isGridIncoming ? "bg-blue-500" : "bg-green-500"}`} />
-              <span>{isGridIncoming ? t("energy_distribution.grid_import") : t("energy_distribution.grid_export")}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="h-2 w-4 bg-red-500 rounded" />
-              <span>{t("energy_distribution.home_consumption")}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="h-2 w-4 bg-pink-500 rounded" />
-              <span>{t("energy_distribution.battery_charge_discharge")}</span>
+            {/* Battery Node (Bottom Center: 50% 85%) */}
+            <div className="absolute top-[85%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-0 h-0">
+              <EnergyNode
+                icon={Battery}
+                label={t("energy_distribution.battery")}
+                value={Math.abs(batteryPower)}
+                colorClass={
+                  hasBatteryCharge ? "text-green-500" : "text-pink-500"
+                }
+                bgClass={
+                  hasBatteryCharge ? "bg-green-500/10" : "bg-pink-500/10"
+                }
+                borderClass={
+                  hasBatteryCharge ? "border-green-500" : "border-pink-500"
+                }
+                active={hasBatteryCharge || hasBatteryDischarge}
+              >
+                {/* Extra SOC Badge with dynamic color gradient */}
+                <div
+                  className="absolute -top-1 -right-2 z-30 px-1.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-black text-white shadow-md ring-2 ring-background tabular-nums animate-in zoom-in duration-300"
+                  style={{ backgroundColor: getBatteryColor(soc) }}
+                >
+                  {soc}%
+                </div>
+              </EnergyNode>
             </div>
           </div>
         </div>
@@ -231,3 +224,116 @@ export default function EnergyDistributionCard({ data }: EnergyDistributionCardP
   );
 }
 
+// --- Subcomponents ---
+
+function FlowPath({
+  d,
+  color,
+  active,
+  dashed,
+}: {
+  d: string;
+  color: string;
+  active: boolean;
+  dashed?: boolean;
+}) {
+  if (!active)
+    return (
+      <path
+        d={d}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        className="text-muted/10"
+      />
+    );
+
+  return (
+    <>
+      {/* Glow underlay */}
+      <path
+        d={d}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="4"
+        className={`${color} opacity-20 blur-[2px]`}
+      />
+      {/* Animated dashed line */}
+      <path
+        d={d}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        className={`${color} animate-energy-flow`}
+        strokeDasharray={dashed ? "5 5" : "10 10"}
+        strokeLinecap="round"
+      />
+    </>
+  );
+}
+
+function EnergyNode({
+  icon: Icon,
+  label,
+  value,
+  colorClass,
+  bgClass,
+  borderClass,
+  active,
+  subLabel,
+  children,
+}: any) {
+  return (
+    // This container is 0x0 size and absolutely centered.
+    // Everything else flows out from this center point.
+    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+      <div className="relative flex items-center justify-center w-0 h-0">
+        {/* Icon Container (Target for lines) */}
+        <div className="absolute pointer-events-auto flex items-center justify-center">
+          <div
+            className={`relative p-3 rounded-full transition-all duration-500 flex items-center justify-center 
+            ${active ? `border-2 ${borderClass} shadow-lg` : "border-2 border-muted"}`}
+          >
+            {/* Solid background mask */}
+            <div className="absolute inset-0 rounded-full bg-card" />
+
+            {/* Background overlay */}
+            <div
+              className={`absolute inset-0 rounded-full transition-colors duration-500 ${active ? bgClass : "bg-muted/10"}`}
+            />
+
+            {active && (
+              <div
+                className={`absolute inset-0 rounded-full animate-pulse-ring ${bgClass}`}
+              />
+            )}
+
+            <Icon
+              className={`relative z-10 w-6 h-6 transition-colors duration-500 ${active ? colorClass : "text-muted-foreground"}`}
+            />
+            {children}
+          </div>
+        </div>
+
+        {/* Value Badge (Absolute positioned below center) */}
+        <div className="absolute top-[32px] left-1/2 -translate-x-1/2 text-center whitespace-nowrap z-20 pointer-events-auto">
+          <div className="inline-block px-2.5 py-1 rounded-full bg-card/90 backdrop-blur-md border shadow-sm">
+            <div
+              className={`text-sm font-bold font-mono leading-none transition-colors duration-500 ${active ? "text-foreground" : "text-muted-foreground"}`}
+            >
+              {formatPower(value)}
+            </div>
+          </div>
+
+          {subLabel && (
+            <div className="mt-1 text-center">
+              <span className="text-[10px] uppercase font-bold tracking-wider opacity-70 bg-card/50 px-1.5 py-0.5 rounded border border-transparent">
+                {subLabel}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

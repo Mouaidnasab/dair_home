@@ -4,15 +4,30 @@ import Header from "@/components/Header";
 import BatteryCard from "@/components/BatteryCard";
 import InverterPanel from "@/components/InverterPanel";
 import TrendsCard from "@/components/TrendsCard";
-import ElectricityStatusCard from "@/components/ElectricityStatusCard";
+import GridTrendsPanel from "@/components/GridTrendsPanel";
+import EnergyDistributionCard from "@/components/EnergyDistributionCard";
 
 import Footer from "@/components/Footer";
 import ErrorBanner from "@/components/ErrorBanner";
 import GovernmentElectricityCard from "@/components/GovernmentElectricityCard";
 import { SkeletonBatteryCard, SkeletonCard } from "@/components/SkeletonCard";
-import { fetchDashboardData, fetchTrendsData } from "@/lib/api";
+import EnvironmentCard from "@/components/EnvironmentCard";
+import PvStatsCard from "@/components/PvStatsCard";
+import {
+  fetchDashboardData,
+  fetchTrendsData,
+  fetchGridStats,
+  pullNow,
+} from "@/lib/api";
+import { useCurrency } from "@/contexts/CurrencyContext";
+import { toast } from "sonner";
 
-import { DashboardData, TrendsSeries, TimeSeriesPoint } from "@/types/energy";
+import {
+  DashboardData,
+  TrendsSeries,
+  TimeSeriesPoint,
+  GridStats,
+} from "@/types/energy";
 
 interface ElectricityInterval {
   startTime: string;
@@ -30,15 +45,19 @@ function sameDay(a: Date, b: Date) {
 
 export default function Home() {
   const { t } = useTranslation();
+  const { currency } = useCurrency();
 
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(
-    null
+    null,
   );
   const [trendsData, setTrendsData] = useState<TrendsSeries | null>(null);
+  const [gridOverview, setGridOverview] = useState<GridStats | null>(null);
 
   // Loading states
-  const [isLoading, setIsLoading] = useState(true);
-  const [firstLoadDone, setFirstLoadDone] = useState(false); // show skeletons only before this turns true
+  const [isDashboardLoading, setDashboardLoading] = useState(true);
+  const [isGridLoading, setGridLoading] = useState(true);
+  const [isTrendsLoading, setTrendsLoading] = useState(true);
+  const [firstLoadDone, setFirstLoadDone] = useState(false); // Global first load flag
   const [apiError, setApiError] = useState<string | null>(null);
 
   // Government electricity (intervals & total hours) — now also needs the viewed date
@@ -51,24 +70,27 @@ export default function Home() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const isViewingToday = useMemo(
     () => sameDay(selectedDate, new Date()),
-    [selectedDate]
+    [selectedDate],
   );
 
   // -------- Helpers --------
   const calculateGovernmentElectricityIntervals = (
-    timeSeriesData: TimeSeriesPoint[]
+    timeSeriesData: TimeSeriesPoint[],
   ) => {
-    // Grid power > 0 => drawing from government electricity
+    // OLD Logic: Grid power > 0
+    // NEW Logic: Grid Voltage > 100 (approx threshold for 220V grid availability)
     const intervals: ElectricityInterval[] = [];
     let current: ElectricityInterval | null = null;
     let totalHours = 0;
 
     for (let i = 0; i < timeSeriesData.length; i++) {
       const point = timeSeriesData[i];
-      const gridPower = point.gridPower || 0;
-      const drawingFromGrid = gridPower > 0;
+      // Use voltage to detect presence. 50V is a safe lower bound to avoid noise,
+      // but usually it's ~220V. >100V is a solid "ON" signal.
+      const gridVoltage = point.gridVoltage || 0;
+      const isGridPresent = gridVoltage > 100;
 
-      if (drawingFromGrid) {
+      if (isGridPresent) {
         if (!current) {
           current = {
             startTime: point.timestamp,
@@ -82,7 +104,7 @@ export default function Home() {
         const start = new Date(current.startTime);
         const end = new Date(current.endTime);
         const mins = Math.round(
-          (end.getTime() - start.getTime()) / (1000 * 60)
+          (end.getTime() - start.getTime()) / (1000 * 60),
         );
         if (mins > 0) {
           current.duration = mins;
@@ -110,48 +132,73 @@ export default function Home() {
   };
 
   // -------- Data loading --------
+  // Progressive loading using API queue
   const loadData = useCallback(
     async (opts?: { forDate?: Date }) => {
       const forDate = opts?.forDate ?? selectedDate;
-      try {
-        setApiError(null);
 
-        // If this is after first load, we want bottom loading bar instead of skeletons
-        setIsLoading(true);
+      setApiError(null);
+      // Trigger all fetches independently.
+      // The Queue in api.ts will handle serialization and priority.
 
-        const [dashboard, trends] = await Promise.all([
-          // Dashboard = current snapshot
-          fetchDashboardData(),
-          // Trends = selected day
-          fetchTrendsData(forDate),
-        ]);
+      // 1. Dashboard Data (High Priority)
+      setDashboardLoading(true);
+      fetchDashboardData()
+        .then((data) => {
+          setDashboardData(data);
+          setDashboardLoading(false);
+          // Assuming dashboard is the "main" content for first load
+          if (!firstLoadDone) setFirstLoadDone(true);
+        })
+        .catch((err) => {
+          console.error("Dashboard load failed", err);
+          setApiError(
+            err instanceof Error ? err.message : "Failed to load dashboard",
+          );
+          setDashboardLoading(false);
+        });
 
-        setDashboardData(dashboard);
-        setTrendsData(trends);
+      // 2. Grid Stats (Medium Priority)
+      setGridLoading(true);
+      fetchGridStats({
+        period: "overview",
+        date_str: forDate.toISOString().split("T")[0],
+        currency,
+      })
+        .then((data) => {
+          setGridOverview(data);
+          setGridLoading(false);
+        })
+        .catch((err) => {
+          console.error("Grid stats load failed", err);
+          setGridLoading(false);
+        });
 
-        if (trends?.home?.length) {
-          calculateGovernmentElectricityIntervals(trends.home);
-        } else {
-          setGovernmentElectricityIntervals([]);
-          setGovernmentElectricityHours(0);
-        }
-      } catch (err) {
-        console.error("Failed to load data:", err);
-        setApiError(
-          err instanceof Error ? err.message : t("error.failed_fetch")
-        );
-      } finally {
-        setIsLoading(false);
-        if (!firstLoadDone) setFirstLoadDone(true);
-      }
+      // 3. Trends (Low Priority)
+      setTrendsLoading(true);
+      fetchTrendsData(forDate)
+        .then((data) => {
+          setTrendsData(data);
+          if (data?.home?.length) {
+            calculateGovernmentElectricityIntervals(data.home);
+          } else {
+            setGovernmentElectricityIntervals([]);
+            setGovernmentElectricityHours(0);
+          }
+          setTrendsLoading(false);
+        })
+        .catch((err) => {
+          console.error("Trends load failed", err);
+          setTrendsLoading(false);
+        });
     },
-    [selectedDate, t, firstLoadDone]
+    [selectedDate, firstLoadDone, currency],
   );
 
   // Initial + on date change
   useEffect(() => {
     loadData({ forDate: selectedDate });
-  }, [selectedDate, loadData]);
+  }, [selectedDate, loadData, currency]);
 
   // Poll every 30s only when viewing Today (so historical views don't get overwritten)
   useEffect(() => {
@@ -160,10 +207,19 @@ export default function Home() {
     return () => clearInterval(id);
   }, [isViewingToday, loadData]);
 
-  const onRefresh = useCallback(() => {
-    // Refresh using the selectedDate (not forcing today)
+  const onRefresh = useCallback(async () => {
+    // 1. Trigger immediate pull from backend
+    toast.info(t("common.refreshing"));
+    try {
+      await pullNow();
+      toast.success(t("common.refresh_trigger_success"));
+    } catch (err) {
+      toast.error(t("common.refresh_failed"));
+    }
+
+    // 2. Refresh UI data using the selectedDate (not forcing today)
     loadData({ forDate: selectedDate });
-  }, [loadData, selectedDate]);
+  }, [loadData, selectedDate, t]);
 
   // -------- Derived --------
   const totalLoadW =
@@ -172,8 +228,11 @@ export default function Home() {
       dashboardData.inverters.firstFloor.loadW;
 
   // ---- UI helpers: Bottom loading bar (indeterminate) shown only after first load ----
+  // Show if ANY is loading (after first load)
+  const isAnyLoading = isDashboardLoading || isGridLoading || isTrendsLoading;
+
   const BottomLoadingBar = () =>
-    !firstLoadDone || !isLoading ? null : (
+    !firstLoadDone || !isAnyLoading ? null : (
       <div className="fixed bottom-0 left-0 right-0 z-40">
         <div className="h-1 w-full overflow-hidden bg-muted">
           <div className="h-1 w-1/3 animate-pulse bg-primary" />
@@ -201,54 +260,84 @@ export default function Home() {
             </div>
           )}
 
-          {/* Before first load finishes: show skeletons */}
-          {!firstLoadDone && isLoading ? (
-            <div className="space-y-6">
-              <SkeletonCard />
-              <SkeletonBatteryCard />
-              <div className="grid gap-6 md:grid-cols-2">
+          <div className="space-y-6">
+            {/* 1. Dashboard Section (High Priority) */}
+            {isDashboardLoading && !dashboardData ? (
+              <div className="space-y-6">
+                {/* Energy Distribution Placeholder */}
                 <SkeletonCard />
-                <SkeletonCard />
+                {/* Battery Placeholder */}
+                <SkeletonBatteryCard />
+                {/* Inverters Placeholder */}
+                <div className="grid gap-6 md:grid-cols-2">
+                  <SkeletonCard />
+                  <SkeletonCard />
+                </div>
               </div>
-              <div className="grid gap-6 md:grid-cols-2">
-                <SkeletonCard />
-                <SkeletonCard />
-              </div>
-              <SkeletonCard />
-            </div>
-          ) : dashboardData && trendsData ? (
-            <div className="space-y-6">
-              {/* Electricity Status Card */}
-              <ElectricityStatusCard data={dashboardData} />
+            ) : dashboardData ? (
+              <>
+                {/* Energy Distribution Card */}
+                <EnergyDistributionCard data={dashboardData} />
 
-              {/* Battery Card */}
-              <BatteryCard
-                battery={dashboardData.battery}
-                loadW={totalLoadW || 0}
-              />
-
-              {/* Inverter Panels */}
-              <div className="grid gap-6 md:grid-cols-2">
-                <InverterPanel
-                  title={t("trends.ground_floor")}
-                  data={dashboardData.inverters.groundFloor}
+                {/* Battery Card */}
+                <BatteryCard
+                  battery={dashboardData.battery}
+                  loadW={totalLoadW || 0}
                 />
-                <InverterPanel
-                  title={t("trends.first_floor")}
-                  data={dashboardData.inverters.firstFloor}
-                />
-              </div>
 
-              {/* Government Electricity — pass the viewed date */}
-              <div className="grid gap-6 md:grid-cols-2">
+                {/* Inverter Panels */}
+                <div className="grid gap-6 md:grid-cols-2">
+                  <InverterPanel
+                    title={t("trends.ground_floor")}
+                    data={dashboardData.inverters.groundFloor}
+                  />
+                  <InverterPanel
+                    title={t("trends.first_floor")}
+                    data={dashboardData.inverters.firstFloor}
+                  />
+                </div>
+              </>
+            ) : null}
+
+            {/* 2. Grid & Utility Section (Medium Priority) */}
+            <div className="grid gap-6 md:grid-cols-2">
+              {isGridLoading && !gridOverview ? (
+                <SkeletonCard />
+              ) : (
                 <GovernmentElectricityCard
                   intervals={governmentElectricityIntervals}
                   totalHours={governmentElectricityHours}
-                  viewDate={selectedDate} // <- pass selected date so the card can show the current viewing date
+                  viewDate={selectedDate}
+                  estimatedCost={
+                    (gridOverview?.today as any)?.cost_syp_marginal ??
+                    (gridOverview?.today as any)?.cost_marginal ??
+                    (gridOverview?.today as any)?.cost ??
+                    (gridOverview?.today as any)?.bill_syp_standalone ??
+                    (gridOverview?.today as any)?.bill_standalone
+                  }
+                  avgDailyHours={gridOverview?.insights?.avg_grid_hours}
                 />
-              </div>
+              )}
+              {/* Note: PV Stats/Environment currently rely on dashboardData */}
+            </div>
 
-              {/* Trends (controlled date) */}
+            {/* 3. Environment (Relies on DashboardData) */}
+            {isDashboardLoading && !dashboardData ? (
+              <div className="grid gap-6 md:grid-cols-2">
+                <SkeletonCard />
+                <SkeletonCard />
+              </div>
+            ) : dashboardData ? (
+              <div className="grid gap-6 md:grid-cols-2">
+                <PvStatsCard stats={dashboardData.pvStats} />
+                <EnvironmentCard environment={dashboardData.environment} />
+              </div>
+            ) : null}
+
+            {/* 4. Trends (Low Priority) */}
+            {isTrendsLoading && !trendsData ? (
+              <SkeletonCard />
+            ) : trendsData ? (
               <TrendsCard
                 homeSeries={trendsData.home}
                 groundFloorSeries={trendsData.groundFloor}
@@ -256,13 +345,18 @@ export default function Home() {
                 selectedDate={selectedDate}
                 onDateChange={setSelectedDate}
               />
-            </div>
-          ) : (
-            // After first load: if something fails and we have no data, show a compact error area
-            <div className="flex h-96 items-center justify-center text-muted-foreground">
-              {t("error.failed_fetch")}
-            </div>
-          )}
+            ) : null}
+
+            {/* Grid Trends Panel - Also uses grid stats but maybe separate fetch? 
+                Currently Home doesn't pass props to GridTrendsPanel, it fetches its own data.
+                We might want to optimizing that later, but for now GridTrendsPanel fetches its own data independently.
+                Given the requirement "queue", GridTrendsPanel's fetch will also be queued (Medium).
+            */}
+            <GridTrendsPanel
+              overviewData={gridOverview}
+              selectedDate={selectedDate}
+            />
+          </div>
         </div>
       </main>
 

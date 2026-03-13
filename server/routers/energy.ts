@@ -1,12 +1,16 @@
 import { publicProcedure, router } from "../_core/trpc";
 import { z } from "zod";
+import { ENV } from "../_core/env";
 
-const BACKEND_API = "https://dair.drd-home.online";
+const BACKEND_API = ENV.backendUrl;
 
 /**
  * Fetch data from the external energy API
  */
-async function fetchEnergyData(endpoint: string, params: Record<string, string>) {
+async function fetchEnergyData(
+  endpoint: string,
+  params: Record<string, string>,
+) {
   const searchParams = new URLSearchParams(params);
   const url = `${BACKEND_API}${endpoint}?${searchParams.toString()}`;
 
@@ -27,10 +31,10 @@ export const energyRouter = router({
       z.object({
         plantId: z.string(),
         label: z.string(),
-      })
+      }),
     )
     .query(async ({ input }) => {
-            const data = await fetchEnergyData("/export-compact", {
+      const data = await fetchEnergyData("/export-compact", {
         plantId: input.plantId,
         label: input.label,
         limit: "1",
@@ -54,7 +58,7 @@ export const energyRouter = router({
         plantId: z.string(),
         label: z.string().optional(),
         hours: z.number().default(24),
-      })
+      }),
     )
     .query(async ({ input }) => {
       const params: Record<string, string> = {
@@ -69,7 +73,7 @@ export const energyRouter = router({
         params.label = input.label;
       }
 
-            const data = await fetchEnergyData("/export-compact", params);
+      const data = await fetchEnergyData("/export-compact", params);
 
       if (!data.rows) {
         return [];
@@ -78,4 +82,3 @@ export const energyRouter = router({
       return data.rows;
     }),
 });
-

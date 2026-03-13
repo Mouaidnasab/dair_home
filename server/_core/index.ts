@@ -6,6 +6,7 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
+import { ENV } from "./env";
 
 // ---------- Port helpers ----------
 function isPortAvailable(port: number): Promise<boolean> {
@@ -62,6 +63,13 @@ function extractEssentialFields(row: any) {
     pd_installDateStr: row.pd_installDateStr || "",
     pd_timeZone: row.pd_timeZone || "UTC+02:00",
     pd_electricityPrice: parseInt(row.pd_electricityPrice) || 0,
+    // Grid Voltage for Government Trigger
+    ef_acRInVolt: parseFloat(row.ef_acRInVolt) || 0,
+    // Environmental Benefits
+    pd_totalReduceDeforestation:
+      parseFloat(row.pd_totalReduceDeforestation) || 0,
+    pd_totalCo2Less: parseFloat(row.pd_totalCo2Less) || 0,
+    pd_totalSpareCoal: parseFloat(row.pd_totalSpareCoal) || 0,
   };
 }
 
@@ -132,7 +140,7 @@ async function startServer() {
         any,
         { plantId?: string; label?: string; day?: string }
       >,
-      res: Response
+      res: Response,
     ) => {
       try {
         const { plantId, label, day } = req.query;
@@ -167,9 +175,9 @@ async function startServer() {
           fmt: "json",
         });
 
-        const url = `https://dair.drd-home.online/export-compact?${params.toString()}`;
+        const url = `${ENV.backendUrl}/export-compact?${params.toString()}`;
         console.log(
-          `[Energy API] Fetching latest for ${label} on ${labelForLog}...`
+          `[Energy API] Fetching latest for ${label} on ${labelForLog}...`,
         );
 
         const controller = new AbortController();
@@ -202,7 +210,7 @@ async function startServer() {
         console.error("[Energy API] Latest error:", error);
         return res.status(500).json({ error: "Internal server error" });
       }
-    }
+    },
   );
 
   // ---------- Energy API: /api/energy/timeseries ----------
@@ -216,7 +224,7 @@ async function startServer() {
         any,
         { plantId?: string; label?: string; day?: string }
       >,
-      res: Response
+      res: Response,
     ) => {
       try {
         const { label, day } = req.query;
@@ -246,9 +254,9 @@ async function startServer() {
         });
         if (label) params.append("label", String(label));
 
-        const url = `https://dair.drd-home.online/export-compact?${params.toString()}`;
+        const url = `${ENV.backendUrl}/export-compact?${params.toString()}`;
         console.log(
-          `[Energy API] Fetching timeseries for ${label || "home"} on ${labelForLog}...`
+          `[Energy API] Fetching timeseries for ${label || "home"} on ${labelForLog}...`,
         );
 
         const controller = new AbortController();
@@ -281,8 +289,210 @@ async function startServer() {
         console.error("[Energy API] Timeseries error:", error);
         return res.status(500).json({ error: "Internal server error" });
       }
-    }
+    },
   );
+
+  // ---------- Battery API: /api/battery/summary ----------
+  app.get(
+    "/api/battery/summary",
+    async (
+      req: Request<
+        {},
+        any,
+        any,
+        {
+          deviceSn?: string;
+          label?: string;
+          minutes?: string;
+          hours?: string;
+          start?: string;
+          end?: string;
+          limit?: string;
+        }
+      >,
+      res: Response,
+    ) => {
+      try {
+        const queryParams = req.query;
+        const params = new URLSearchParams();
+
+        // Forward allowed parameters
+        if (queryParams.deviceSn)
+          params.append("deviceSn", queryParams.deviceSn);
+        if (queryParams.label) params.append("label", queryParams.label);
+        if (queryParams.minutes) params.append("minutes", queryParams.minutes);
+        if (queryParams.hours) params.append("hours", queryParams.hours);
+        if (queryParams.start) params.append("start", queryParams.start);
+        if (queryParams.end) params.append("end", queryParams.end);
+        if (queryParams.limit) params.append("limit", queryParams.limit);
+
+        const url = `${ENV.backendUrl}/battery/summary?${params.toString()}`;
+        console.log(`[Battery API] Fetching summary...`);
+
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 10_000);
+
+        const response = await fetch(url, {
+          method: "GET",
+          headers: { Accept: "application/json" },
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeout);
+
+        if (!response.ok) {
+          console.error(`[Battery API] Backend returned ${response.status}`);
+          return res
+            .status(response.status)
+            .json({ error: "Failed to fetch from backend" });
+        }
+
+        const data = await response.json();
+        return res.json(data);
+      } catch (error) {
+        console.error("[Battery API] Summary error:", error);
+        return res.status(500).json({ error: "Internal server error" });
+      }
+    },
+  );
+
+  // ---------- Battery API: /api/battery/details ----------
+  app.get(
+    "/api/battery/details",
+    async (
+      req: Request<
+        {},
+        any,
+        any,
+        {
+          deviceSn?: string;
+          label?: string;
+          minutes?: string;
+          hours?: string;
+          start?: string;
+          end?: string;
+          limit?: string;
+        }
+      >,
+      res: Response,
+    ) => {
+      try {
+        const queryParams = req.query;
+        const params = new URLSearchParams();
+
+        // Forward allowed parameters
+        if (queryParams.deviceSn)
+          params.append("deviceSn", queryParams.deviceSn);
+        if (queryParams.label) params.append("label", queryParams.label);
+        if (queryParams.minutes) params.append("minutes", queryParams.minutes);
+        if (queryParams.hours) params.append("hours", queryParams.hours);
+        if (queryParams.start) params.append("start", queryParams.start);
+        if (queryParams.end) params.append("end", queryParams.end);
+        if (queryParams.limit) params.append("limit", queryParams.limit);
+
+        const url = `${ENV.backendUrl}/battery/details?${params.toString()}`;
+        console.log(`[Battery API] Fetching details...`);
+
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 15_000);
+
+        const response = await fetch(url, {
+          method: "GET",
+          headers: { Accept: "application/json" },
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeout);
+
+        if (!response.ok) {
+          console.error(`[Battery API] Backend returned ${response.status}`);
+          return res
+            .status(response.status)
+            .json({ error: "Failed to fetch from backend" });
+        }
+
+        const data = await response.json();
+        return res.json(data);
+      } catch (error) {
+        console.error("[Battery API] Details error:", error);
+        return res.status(500).json({ error: "Internal server error" });
+      }
+    },
+  );
+
+  // ---------- Grid Stats API: /stats/grid-consumption ----------
+  app.get(
+    "/stats/grid-consumption",
+    async (
+      req: Request<{}, any, any, { period?: string; date_str?: string }>,
+      res: Response,
+    ) => {
+      try {
+        const query = new URLSearchParams(req.query as any);
+        const url = `${ENV.backendUrl}/stats/grid-consumption?${query.toString()}`;
+        console.log(`[Grid Stats] Proxying to: ${url}`);
+
+        const response = await fetch(url);
+        if (!response.ok) {
+          return res
+            .status(response.status)
+            .json({ error: "Failed to fetch from backend" });
+        }
+
+        const data = await response.json();
+        return res.json(data);
+      } catch (error) {
+        console.error("[Grid Stats] Proxy error:", error);
+        return res.status(500).json({ error: "Internal server error" });
+      }
+    },
+  );
+
+  // ---------- Cycles Summary API: /stats/cycles ----------
+  app.get(
+    "/stats/cycles",
+    async (req: Request<{}, any, any, { limit?: string }>, res: Response) => {
+      try {
+        const query = new URLSearchParams(req.query as any);
+        const url = `${ENV.backendUrl}/stats/cycles?${query.toString()}`;
+        console.log(`[Cycles Summary] Proxying to: ${url}`);
+
+        const response = await fetch(url);
+        if (!response.ok) {
+          return res
+            .status(response.status)
+            .json({ error: "Failed to fetch from backend" });
+        }
+
+        const data = await response.json();
+        return res.json(data);
+      } catch (error) {
+        console.error("[Cycles Summary] Proxy error:", error);
+        return res.status(500).json({ error: "Internal server error" });
+      }
+    },
+  );
+
+  // ---------- Pull Now API: /pull-now ----------
+  app.post("/pull-now", async (_req: Request, res: Response) => {
+    try {
+      const url = `${ENV.backendUrl}/pull-now`;
+      console.log(`[Pull Now] Proxying POST to: ${url}`);
+
+      const response = await fetch(url, { method: "POST" });
+      if (!response.ok) {
+        return res
+          .status(response.status)
+          .json({ error: "Failed to trigger pull on backend" });
+      }
+
+      const data = await response.json();
+      return res.json(data);
+    } catch (error) {
+      console.error("[Pull Now] Proxy error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
 
   // ---------- tRPC ----------
   app.use(
@@ -290,7 +500,7 @@ async function startServer() {
     createExpressMiddleware({
       router: appRouter,
       createContext,
-    })
+    }),
   );
 
   // ---------- Dev / Prod assets ----------
@@ -301,9 +511,15 @@ async function startServer() {
   }
 
   // ---------- Start ----------
-  const port = await findAvailablePort();
-  server.listen(port, () => {
-    console.log(`Server running on http://localhost:${port}/`);
+  const requestedPort = process.env.PORT
+    ? parseInt(process.env.PORT, 10)
+    : 3000;
+  const port = process.env.PORT
+    ? requestedPort
+    : await findAvailablePort(requestedPort);
+
+  server.listen(port, "0.0.0.0", () => {
+    console.log(`Server running on http://0.0.0.0:${port}/`);
   });
 }
 

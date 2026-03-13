@@ -36,7 +36,7 @@ export default function InverterPanel({
             {title}
           </CardTitle>
           <Badge variant="secondary" className="text-xs">
-            {data.ratedKwp} kWp
+            8 kWp
           </Badge>
         </div>
       </CardHeader>

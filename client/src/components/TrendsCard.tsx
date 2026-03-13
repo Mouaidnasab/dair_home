@@ -181,7 +181,7 @@ export default function TrendsCard({
         labelKey: "legend.soc",
       },
     ],
-    [t]
+    [t],
   );
 
   /** Enabled map (all enabled by default) */
@@ -195,7 +195,7 @@ export default function TrendsCard({
 
   /** Controlled/Uncontrolled date handling */
   const [internalDate, setInternalDate] = useState<Date>(
-    selectedDate ?? new Date()
+    selectedDate ?? new Date(),
   );
   useEffect(() => {
     if (selectedDate) setInternalDate(selectedDate);
@@ -205,7 +205,7 @@ export default function TrendsCard({
   const currentDate = clampToToday(internalDate, today);
   const isToday = useMemo(
     () => sameDay(currentDate, today),
-    [currentDate, today]
+    [currentDate, today],
   );
   const handleDateChange = (nextRaw: Date) => {
     const next = clampToToday(nextRaw, today);
@@ -249,7 +249,7 @@ export default function TrendsCard({
     if (!anyOn) {
       return (
         <div className="flex h-80 items-center justify-center text-muted-foreground">
-          {t("trends.no_series_selected", "No series selected")}
+          {t("trends.no_series_selected")}
         </div>
       );
     }
@@ -373,7 +373,7 @@ export default function TrendsCard({
             type="button"
             className="rounded border px-3 py-2 text-sm"
             onClick={() => handleDateChange(addDays(currentDate, -1))}
-            aria-label="Previous day"
+            aria-label={t("common.previous_day")}
           >
             {i18n.dir() === "rtl" ? "▶︎" : "◀"}
           </button>
@@ -388,7 +388,7 @@ export default function TrendsCard({
               const next = fromInputDateString(e.target.value);
               if (!isNaN(next.getTime())) handleDateChange(next);
             }}
-            aria-label="Select date"
+            aria-label={t("common.select_date")}
           />
 
           <button
@@ -402,12 +402,12 @@ export default function TrendsCard({
               const candidate = addDays(currentDate, 1);
               if (!isAfterToday(candidate, today)) handleDateChange(candidate);
             }}
-            aria-label="Next day"
+            aria-label={t("common.next_day")}
             aria-disabled={isAfterToday(addDays(currentDate, 1), today)}
             disabled={isAfterToday(addDays(currentDate, 1), today)}
             title={
               isAfterToday(addDays(currentDate, 1), today)
-                ? t("common.not_allowed", "Not allowed")
+                ? t("common.not_allowed")
                 : undefined
             }
           >
@@ -430,7 +430,7 @@ export default function TrendsCard({
         {/* Filter Controls */}
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <span className="text-sm text-muted-foreground">
-            {t("trends.show_series", "Show series")}:
+            {t("trends.show_series")}:
           </span>
 
           {SERIES.map((s) => (
@@ -461,14 +461,14 @@ export default function TrendsCard({
               className="rounded border px-2 py-1 text-xs"
               onClick={() => setAll(true)}
             >
-              {t("common.select_all", "Select all")}
+              {t("common.select_all")}
             </button>
             <button
               type="button"
               className="rounded border px-2 py-1 text-xs"
               onClick={() => setAll(false)}
             >
-              {t("common.select_none", "None")}
+              {t("common.select_none")}
             </button>
           </div>
         </div>

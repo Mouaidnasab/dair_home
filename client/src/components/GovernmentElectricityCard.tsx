@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTranslation } from "react-i18next";
-import { formatTime } from "@/lib/utils";
+import { useCurrency } from "@/contexts/CurrencyContext";
+import { formatTime, getCostColor } from "@/lib/utils";
 
 interface ElectricityInterval {
   startTime: string;
@@ -11,15 +12,20 @@ interface ElectricityInterval {
 interface GovernmentElectricityCardProps {
   intervals: ElectricityInterval[];
   totalHours: number;
-  viewDate?: Date; // ← added from Home
+  viewDate?: Date;
+  estimatedCost?: number; // New
+  avgDailyHours?: number; // New
 }
 
 export default function GovernmentElectricityCard({
   intervals,
   totalHours,
   viewDate,
+  estimatedCost,
+  avgDailyHours,
 }: GovernmentElectricityCardProps) {
   const { t } = useTranslation();
+  const { currency } = useCurrency();
 
   const isToday = viewDate
     ? new Date().toDateString() === viewDate.toDateString()
@@ -35,8 +41,8 @@ export default function GovernmentElectricityCard({
 
   return (
     <Card className="relative overflow-hidden">
-      <CardHeader className="pb-4 flex items-start justify-between">
-        <CardTitle>{t("government.title")}</CardTitle>
+      <CardHeader className="flex flex-row items-center justify-between pb-4">
+        <CardTitle>{t("grid.title", "Grid Status")}</CardTitle>
 
         {/* Date Badge */}
         <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
@@ -45,16 +51,44 @@ export default function GovernmentElectricityCard({
       </CardHeader>
 
       <CardContent className="space-y-6">
-        {/* Total hours */}
-        <div className="space-y-1">
-          <div className="text-sm text-muted-foreground">
-            {isToday ? t("government.today") : t("government.viewing_day")}
+        <div className="grid grid-cols-2 gap-4">
+          {/* Total hours */}
+          <div className="space-y-1">
+            <div className="text-sm text-muted-foreground">
+              {isToday ? t("government.today") : t("government.viewing_day")}
+            </div>
+            <div className="text-3xl font-bold">{totalHours.toFixed(1)}h</div>
+            {avgDailyHours !== undefined && (
+              <div className="text-xs text-muted-foreground">
+                {t("government.avg")} {avgDailyHours.toFixed(1)}h/day
+              </div>
+            )}
           </div>
-          <div className="text-3xl font-bold">{totalHours.toFixed(1)}h</div>
+
+          {/* Estimated Cost */}
+          {estimatedCost !== undefined && (
+            <div className="space-y-1">
+              <div className="text-sm text-muted-foreground">
+                {t("government.est_cost")}
+              </div>
+              <div
+                className="text-3xl font-bold"
+                style={{ color: getCostColor(estimatedCost, currency) }}
+              >
+                {estimatedCost.toLocaleString()}{" "}
+                <span className="text-sm font-normal text-muted-foreground">
+                  {currency}
+                </span>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {t("government.marginal_today")}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Intervals list */}
-        <div className="space-y-3 border-t border-border pt-4">
+        <div className="border-t border-border pt-4 space-y-3">
           <div className="text-sm font-semibold">
             {t("government.intervals")}
           </div>

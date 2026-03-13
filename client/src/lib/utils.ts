@@ -24,7 +24,7 @@ export function formatRelativeTime(date: Date | string): string {
  */
 export function formatAbsoluteTime(
   date: Date | string,
-  timezone?: string
+  timezone?: string,
 ): string {
   const d = typeof date === "string" ? new Date(date) : date;
   const timeStr = d.toLocaleTimeString("en-US", {
@@ -74,8 +74,8 @@ export function formatEnergy(kwh: number): string {
  * Format currency with proper locale
  */
 export function formatCurrency(amount: number, currency: string): string {
-  // For SYP, just show the amount with currency code
-  if (currency === "SYP") {
+  // For SYP related currencies, just show the amount with currency code
+  if (currency === "SYP" || currency === "NEW SYP") {
     return `${Math.round(amount).toLocaleString()} ${currency}`;
   }
 
@@ -88,17 +88,59 @@ export function formatCurrency(amount: number, currency: string): string {
 }
 
 /**
+ * Get color for estimated cost based on currency thresholds
+ * 0 is green, 100% threshold is red
+ */
+export function getCostColor(val: number, currency: string): string {
+  if (val <= 0) return "rgb(34, 197, 94)"; // green-500
+
+  let threshold = 10000; // default SYP
+  if (currency === "NEW SYP") threshold = 100;
+  if (currency === "USD") threshold = 1;
+  if (currency === "SAR") threshold = 4;
+
+  const ratio = Math.min(val / threshold, 1);
+
+  // Interpolate between Green (34, 197, 94) and Red (239, 68, 68)
+  const r = Math.round(34 + ratio * (239 - 34));
+  const g = Math.round(197 + ratio * (68 - 197));
+  const b = Math.round(94 + ratio * (68 - 94));
+
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
+/**
  * Calculate estimated runtime in hours
  */
 export function calculateEstimatedRuntime(
   socPercent: number,
   loadW: number,
-  batteryCapacityWh: number = 10000
+  batteryCapacityWh: number = 10000,
 ): number {
   loadW = loadW * -1;
   if (loadW <= 0) return Infinity;
   const energyAvailableWh = (socPercent / 100) * batteryCapacityWh;
   return energyAvailableWh / loadW;
+}
+
+/**
+ * Get color for battery SOC percentage
+ */
+export function getBatteryColor(soc: number): string {
+  // Red (239, 68, 68) -> Yellow (234, 179, 8) -> Green (34, 197, 94)
+  if (soc <= 20) {
+    const ratio = soc / 20;
+    const r = Math.round(239 + ratio * (234 - 239));
+    const g = Math.round(68 + ratio * (179 - 68));
+    const b = Math.round(68 + ratio * (8 - 68));
+    return `rgb(${r}, ${g}, ${b})`;
+  } else {
+    const ratio = Math.min((soc - 20) / 80, 1);
+    const r = Math.round(234 + ratio * (34 - 234));
+    const g = Math.round(179 + ratio * (197 - 179));
+    const b = Math.round(8 + ratio * (94 - 8));
+    return `rgb(${r}, ${g}, ${b})`;
+  }
 }
 
 /**
@@ -132,7 +174,7 @@ export function getStatusColor(status: "normal" | "warning" | "fault"): string {
  * Get battery state color
  */
 export function getBatteryStateColor(
-  state: "idle" | "charging" | "discharging"
+  state: "idle" | "charging" | "discharging",
 ): string {
   switch (state) {
     case "charging":
@@ -148,7 +190,7 @@ export function getBatteryStateColor(
  * Get battery state label
  */
 export function getBatteryStateLabel(
-  state: "idle" | "charging" | "discharging"
+  state: "idle" | "charging" | "discharging",
 ): string {
   switch (state) {
     case "charging":

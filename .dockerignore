@@ -18,6 +18,10 @@
 !client/public/**
 !client/src/**
 
+# your server and shared code
+!server/**
+!shared/**
+
 # re-exclude junk
 node_modules
 client/node_modules

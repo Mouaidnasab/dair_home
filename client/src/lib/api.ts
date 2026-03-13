@@ -1,4 +1,17 @@
-import { EnergyRecord, DashboardData, TrendsSeries } from "@/types/energy";
+import {
+  EnergyRecord,
+  DashboardData,
+  TrendsSeries,
+  GridStats,
+  GridStatsParams,
+  CycleSummaryResponse,
+} from "@/types/energy";
+import { apiQueue } from "./queue";
+
+// Export concurrency control
+export function setApiConcurrencyMode(mode: "SERIES" | "PARALLEL") {
+  apiQueue.setMode(mode);
+}
 
 // Plant IDs for the two inverters
 const GROUND_FLOOR_ID = "11160008309715425";
@@ -43,7 +56,7 @@ function minuteISO(ts: string): string {
  */
 function transformApiRecord(row: any): EnergyRecord {
   const label = inferLabel(row.plantId, row.plantLabel);
-  return {
+  const record: EnergyRecord = {
     timestamp: row.timestamp || new Date().toISOString(),
     plantId: row.plantId || "",
     plantLabel: label,
@@ -60,6 +73,10 @@ function transformApiRecord(row: any): EnergyRecord {
     pd_countryName: row.pd_countryName || "",
     pd_cityName: row.pd_cityName || "",
     pd_status: row.pd_status || "N",
+
+    pd_totalReduceDeforestation: toFloat(row.pd_totalReduceDeforestation),
+    pd_totalCo2Less: toFloat(row.pd_totalCo2Less),
+    pd_totalSpareCoal: toFloat(row.pd_totalSpareCoal),
 
     ef_emsSoc:
       row.ef_emsSoc !== null && row.ef_emsSoc !== undefined
@@ -81,20 +98,34 @@ function transformApiRecord(row: any): EnergyRecord {
     pd_installDateStr: row.pd_installDateStr || "",
     pd_timeZone: row.pd_timeZone || "UTC+02:00",
     pd_electricityPrice: toFloat(row.pd_electricityPrice),
+    ef_acRInVolt: toFloat(row.ef_acRInVolt),
   };
+
+  // Legacy Merge: Use direct battery data if available (higher accuracy)
+  if (row.battSoc !== undefined && row.battSoc !== null) {
+    record.ef_emsSoc = toFloat(row.battSoc);
+  }
+  if (row.battPower !== undefined && row.battPower !== null) {
+    record.ef_emsPower = toFloat(row.battPower);
+  }
+
+  return record;
 }
 
 /**
  * Fetch latest data point for a specific inverter label
  */
 export async function fetchLatestByLabel(
-  label: "Ground_Floor" | "First_Floor"
+  label: "Ground_Floor" | "First_Floor",
 ): Promise<EnergyRecord> {
   const plantId = label === "Ground_Floor" ? GROUND_FLOOR_ID : FIRST_FLOOR_ID;
 
   try {
     const params = new URLSearchParams({ plantId, label });
-    const response = await fetch(`/api/energy/latest?${params}`);
+    const response = await apiQueue.add(
+      () => fetch(`/api/energy/latest?${params}`),
+      5, // HIGHEST Priority (Live Dashboard)
+    );
     if (!response.ok) throw new Error("Failed to fetch latest data");
 
     const result = await response.json();
@@ -115,14 +146,17 @@ export async function fetchLatestByLabel(
  */
 export async function fetchTimeSeriesAll(
   hours: number = 24,
-  day?: Date
+  day?: Date,
 ): Promise<EnergyRecord[]> {
   try {
     const params = new URLSearchParams({ hours: String(hours) });
     if (day) params.append("day", formatDayYYYYMMDD(day));
 
     // IMPORTANT: no 'label' here — single fetch for both inverters
-    const response = await fetch(`/api/energy/timeseries?${params}`);
+    const response = await apiQueue.add(
+      () => fetch(`/api/energy/timeseries?${params}`),
+      3, // MEDIUM-HIGH Priority (Trends)
+    );
     if (!response.ok) throw new Error("Failed to fetch time-series data");
 
     const result = await response.json();
@@ -135,12 +169,108 @@ export async function fetchTimeSeriesAll(
   }
 }
 
+import { BatterySummary, BatteryDetail } from "@/types/energy";
+
+/**
+ * Fetch Battery Summary
+ */
+export async function fetchBatterySummary(params?: {
+  deviceSn?: string;
+  label?: string;
+  minutes?: number;
+  hours?: number;
+  start?: string; // ISO
+  end?: string; // ISO
+  limit?: number;
+}): Promise<BatterySummary[]> {
+  try {
+    const query = new URLSearchParams();
+    if (params) {
+      if (params.deviceSn) query.append("deviceSn", params.deviceSn);
+      if (params.label) query.append("label", params.label);
+      if (params.minutes) query.append("minutes", String(params.minutes));
+      if (params.hours) query.append("hours", String(params.hours));
+      if (params.start) query.append("start", params.start);
+      if (params.end) query.append("end", params.end);
+      if (params.limit) query.append("limit", String(params.limit));
+    }
+
+    const response = await fetch(`/api/battery/summary?${query.toString()}`);
+    if (!response.ok) throw new Error("Failed to fetch battery summary");
+
+    const result = await response.json();
+    return (result.rows || []) as BatterySummary[];
+  } catch (error) {
+    console.error("Failed to fetch battery summary:", error);
+    throw error;
+  }
+}
+
+/**
+ * Fetch Battery Details
+ */
+export async function fetchBatteryDetails(params?: {
+  deviceSn?: string;
+  label?: string;
+  minutes?: number; // default often 60 if omitted
+  limit?: number;
+}): Promise<BatteryDetail[]> {
+  try {
+    const query = new URLSearchParams();
+    if (params) {
+      if (params.deviceSn) query.append("deviceSn", params.deviceSn);
+      if (params.label) query.append("label", params.label);
+      if (params.minutes) query.append("minutes", String(params.minutes));
+      if (params.limit) query.append("limit", String(params.limit));
+    }
+
+    const response = await fetch(`/api/battery/details?${query.toString()}`);
+    if (!response.ok) throw new Error("Failed to fetch battery details");
+
+    // The backend returns cellVoltList/cellTempList as strings, we might need to parse them
+    // but the interface defines them as string[] for flexibility.
+    // If the API returns them as JSON strings "['3.31', ...]", we should parse.
+    const result = await response.json();
+
+    // Auto-parse list fields if they come as strings
+    const rows = (result.rows || []).map((r: any) => {
+      let cellVoltList = r.cellVoltList;
+      let cellTempList = r.cellTempList;
+
+      if (typeof cellVoltList === "string") {
+        try {
+          cellVoltList = JSON.parse(cellVoltList.replace(/'/g, '"')); // handle single quotes if present
+        } catch (e) {
+          /* ignore */
+        }
+      }
+      if (typeof cellTempList === "string") {
+        try {
+          cellTempList = JSON.parse(cellTempList.replace(/'/g, '"'));
+        } catch (e) {
+          /* ignore */
+        }
+      }
+
+      return {
+        ...r,
+        cellVoltList: Array.isArray(cellVoltList) ? cellVoltList : [],
+        cellTempList: Array.isArray(cellTempList) ? cellTempList : [],
+      };
+    });
+
+    return rows as BatteryDetail[];
+  } catch (error) {
+    console.error("Failed to fetch battery details:", error);
+    throw error;
+  }
+}
+
 /** Fields we sum when combining Ground + First by minute for 'home'. */
 type NumericKeysToSum =
   | "pd_pvTotalPower"
   | "ef_ctThreePhaseTotalPower"
   | "ef_acTotalOutActPower"
-  | "ef_emsPower"
   | "ef_acTtlInPower"
   | "ef_genPower"
   | "ef_meterPower"
@@ -150,7 +280,6 @@ const SUM_KEYS: NumericKeysToSum[] = [
   "pd_pvTotalPower",
   "ef_ctThreePhaseTotalPower",
   "ef_acTotalOutActPower",
-  "ef_emsPower",
   "ef_acTtlInPower",
   "ef_genPower",
   "ef_meterPower",
@@ -159,9 +288,12 @@ const SUM_KEYS: NumericKeysToSum[] = [
 
 /**
  * Keep the **latest** record per minute (last-write-wins) for a single inverter series.
+ *
+ * NOW UPDATE: If duplicate timestamps exist, we might also want to prefer the one with valid battery data?
+ * For now, simple overwrite (last wins) is standard.
  */
 function bucketByMinuteLatest(
-  records: EnergyRecord[]
+  records: EnergyRecord[],
 ): Map<string, EnergyRecord> {
   const map = new Map<string, EnergyRecord>();
   for (let i = 0; i < records.length; i++) {
@@ -186,7 +318,7 @@ function bucketByMinuteLatest(
  */
 function combineMinuteMapsToHome(
   gfMap: Map<string, EnergyRecord>,
-  ffMap: Map<string, EnergyRecord>
+  ffMap: Map<string, EnergyRecord>,
 ): EnergyRecord[] {
   // Avoid iterating MapIterator/Set directly (no downlevelIteration needed)
   const gfKeys = Array.from(gfMap.keys());
@@ -209,27 +341,38 @@ function combineMinuteMapsToHome(
         const ffv = (ff as any)[k] ?? 0;
         (base as any)[k] = gfv + ffv;
       }
-      // SoC ONLY from First_Floor
+      // SoC & Battery Power ONLY from First_Floor (direct value from battery API merge)
       base.ef_emsSoc = ff.ef_emsSoc ?? 0;
+      base.ef_emsPower = ff.ef_emsPower ?? 0;
+
+      // GRID: Take the MAX of voltage/freq to detect if ANY inverter sees the grid
+      base.ef_acRInVolt = Math.max(gf.ef_acRInVolt || 0, ff.ef_acRInVolt || 0);
+
       base.plantLabel = "Home";
       base.timestamp = key;
       out.push(base);
     } else if (gf) {
       const base: EnergyRecord = { ...gf, plantLabel: "Home", timestamp: key };
       // If we only have GF, we still want SoC only from FF → not available → 0
+      // We also default battery power to 0 if FF is missing in this "direct" logic,
+      // OR we could fallback to GF if it has data.
+      // Assuming FF is the master for battery data:
       base.ef_emsSoc = 0;
+      base.ef_emsPower = 0; // or gf.ef_emsPower? Safer to 0 if FF is master.
       out.push(base);
     } else if (ff) {
       const base: EnergyRecord = { ...ff, plantLabel: "Home", timestamp: key };
       // SoC from FF (as requested)
       base.ef_emsSoc = ff.ef_emsSoc ?? 0;
+      // Power from FF (direct)
+      base.ef_emsPower = ff.ef_emsPower ?? 0;
       out.push(base);
     }
   }
 
   // sort chronologically
   out.sort(
-    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
   );
   return out;
 }
@@ -244,6 +387,7 @@ function toTrendPoints(records: EnergyRecord[]) {
     gridPower: r.ef_acTtlInPower || 0,
     genPower: r.ef_genPower || 0,
     batterySoc: r.ef_emsSoc || 0,
+    gridVoltage: r.ef_acRInVolt || 0,
   }));
 }
 
@@ -252,9 +396,14 @@ function toTrendPoints(records: EnergyRecord[]) {
  */
 function buildDashboardData(
   groundFloor: EnergyRecord,
-  firstFloor: EnergyRecord
+  firstFloor: EnergyRecord,
 ): DashboardData {
-  const batteryPower = groundFloor.ef_emsPower + firstFloor.ef_emsPower;
+  // Legacy Merge: The existing /export-compact endpoint now includes direct battery data.
+  // We should NOT sum them anymore, but interpret the value from the 'master' inverter (First Floor)
+  // as the total battery power.
+
+  const batteryPower = firstFloor.ef_emsPower;
+
   const batteryState =
     batteryPower > 50
       ? "charging"
@@ -302,6 +451,31 @@ function buildDashboardData(
       state: batteryState,
       timestamp: firstFloor.timestamp,
     },
+    environment: {
+      co2Reduced:
+        (groundFloor.pd_totalCo2Less || 0) + (firstFloor.pd_totalCo2Less || 0),
+      treesSaved:
+        (groundFloor.pd_totalReduceDeforestation || 0) +
+        (firstFloor.pd_totalReduceDeforestation || 0),
+      coalSaved:
+        (groundFloor.pd_totalSpareCoal || 0) +
+        (firstFloor.pd_totalSpareCoal || 0),
+    },
+    pvStats: {
+      today: (groundFloor.pd_todayPv || 0) + (firstFloor.pd_todayPv || 0),
+      month: (groundFloor.pd_monthPv || 0) + (firstFloor.pd_monthPv || 0),
+      year: (groundFloor.pd_yearPv || 0) + (firstFloor.pd_yearPv || 0),
+      total: (groundFloor.pd_accPv || 0) + (firstFloor.pd_accPv || 0),
+      todayIncome:
+        (groundFloor.pd_pvTodayIncome || 0) +
+        (firstFloor.pd_pvTodayIncome || 0),
+      monthIncome:
+        (groundFloor.pd_monthPvIncome || 0) +
+        (firstFloor.pd_monthPvIncome || 0),
+      yearIncome:
+        (groundFloor.pd_yearPvIncome || 0) + (firstFloor.pd_yearPvIncome || 0),
+      currency: groundFloor.pd_currency || "SYP",
+    },
     location: {
       country: groundFloor.pd_countryName,
       city: "Deyr Atiyah",
@@ -311,7 +485,8 @@ function buildDashboardData(
     lastUpdated: firstFloor.timestamp,
     grid: {
       isPowerOn:
-        groundFloor.ef_acTtlInPower > 0 || firstFloor.ef_acTtlInPower > 0,
+        (groundFloor.ef_acRInVolt || 0) > 100 ||
+        (firstFloor.ef_acRInVolt || 0) > 100,
     },
   };
 }
@@ -351,12 +526,12 @@ export async function fetchTrendsData(date?: Date): Promise<TrendsSeries> {
     const groundFloorBucket = bucketByMinuteLatest(
       allRecords
         .map((r) => ({ ...r, plantLabel: inferLabel(r.plantId, r.plantLabel) }))
-        .filter((r) => r.plantLabel === "Ground_Floor")
+        .filter((r) => r.plantLabel === "Ground_Floor"),
     );
     const firstFloorBucket = bucketByMinuteLatest(
       allRecords
         .map((r) => ({ ...r, plantLabel: inferLabel(r.plantId, r.plantLabel) }))
-        .filter((r) => r.plantLabel === "First_Floor")
+        .filter((r) => r.plantLabel === "First_Floor"),
     );
 
     // Build arrays (sorted) for GF and FF
@@ -364,16 +539,16 @@ export async function fetchTrendsData(date?: Date): Promise<TrendsSeries> {
       new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
 
     const groundFloorSeries = Array.from(groundFloorBucket.values()).sort(
-      sortByTime
+      sortByTime,
     );
     const firstFloorSeries = Array.from(firstFloorBucket.values()).sort(
-      sortByTime
+      sortByTime,
     );
 
     // Combine minutes to produce exactly ONE row per minute for 'home'
     const homeCombined = combineMinuteMapsToHome(
       groundFloorBucket,
-      firstFloorBucket
+      firstFloorBucket,
     );
 
     return {
@@ -384,6 +559,78 @@ export async function fetchTrendsData(date?: Date): Promise<TrendsSeries> {
   } catch (error) {
     console.error("Failed to fetch trends data:", error);
     debugger; // eslint-disable-line no-debugger
+    throw error;
+  }
+}
+
+/**
+ * Fetch Grid Consumption Stats
+ */
+export async function fetchGridStats(
+  params?: GridStatsParams & { currency?: string },
+): Promise<GridStats> {
+  try {
+    const query = new URLSearchParams();
+    if (params) {
+      if (params.period) query.append("period", params.period);
+      if (params.date_str) query.append("date_str", params.date_str);
+      if (params.currency && params.currency !== "SYP") {
+        query.append("currency", params.currency);
+      }
+    }
+    console.log(`[API] calling /stats/grid-consumption with params:`, params);
+    const res = await apiQueue.add(
+      () =>
+        fetch(
+          `/stats/grid-consumption?${query.toString().replace(/\+/g, "%20")}`,
+        ),
+      2, // MEDIUM Priority (Grid)
+    );
+    if (!res.ok) throw new Error("Failed to fetch grid stats");
+    return await res.json();
+  } catch (err) {
+    console.error("fetchGridStats error:", err);
+    throw err;
+  }
+}
+
+/**
+ * Fetch Cycles Summary
+ */
+export async function fetchCyclesSummary(
+  limit: number = 5,
+  currency?: string,
+): Promise<CycleSummaryResponse> {
+  try {
+    const query = new URLSearchParams({ limit: String(limit) });
+    if (currency && currency !== "SYP") {
+      query.append("currency", currency);
+    }
+
+    const res = await apiQueue.add(
+      () => fetch(`/stats/cycles?${query.toString().replace(/\+/g, "%20")}`),
+      1, // LOW Priority
+    );
+    if (!res.ok) throw new Error("Failed to fetch cycles summary");
+    return await res.json();
+  } catch (err) {
+    console.error("fetchCyclesSummary error:", err);
+    throw err;
+  }
+}
+
+/**
+ * Request an immediate data pull from the backend.
+ */
+export async function pullNow(): Promise<void> {
+  try {
+    const response = await apiQueue.add(
+      () => fetch("/pull-now", { method: "POST" }),
+      4, // HIGH Priority
+    );
+    if (!response.ok) throw new Error("Failed to trigger data pull");
+  } catch (error) {
+    console.error("pullNow error:", error);
     throw error;
   }
 }

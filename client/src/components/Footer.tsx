@@ -22,7 +22,7 @@ export default function Footer({ location, currency }: FooterProps) {
             {/* <span>•</span> */}
 
             <span>
-              {t("Copyright Saved")} © {new Date().getFullYear()}
+              {t("common.copyright")} © {new Date().getFullYear()}
             </span>
           </div>
         </div>
