@@ -50,7 +50,7 @@ Background and numbers are in [AUDIT.md](AUDIT.md).
 ## Phase 4 — API v2
 - [x] `GET /api/v1/live`: all devices grouped by zone, served from RAM (zero disk I/O, asserted in a test).
 - [x] `GET /api/v1/series?zone|sn&day&bucket`: ≤ 300 points, aggregated in SQL (`tests/test_api_series.py`).
-- [ ] `GET /api/v1/energy?period=day|month|cycle|year&date&currency`: PV, load, grid import, battery charge/discharge in kWh from rollups, plus the tiered bill. Field names match `client/src/types/energy.ts` exactly (fixes C4).
+- [x] `GET /api/v1/energy?period=day|month|cycle|year&date&currency`: PV, load, grid import, battery charge/discharge in kWh from rollups, plus the tiered bill. Field names match `client/src/types/energy.ts` exactly (fixes C4).
 - [x] C1 (grid kWh = 0 since Feb 2026, while grid voltage reads 206–220 V): find which field or endpoint now carries grid import (check `list_storageRealtimeData_new` history, `pd_todayGridInput`, meter/CT fields) and record the answer in AUDIT.md. `tests/test_grid_import.py` asserts:
   - (a) the importer plus energy endpoint give ≈2.76 kWh for the fixture day 2025-10-22
   - (b) the collector persists the grid-import field identified for current firmware
@@ -59,16 +59,16 @@ Background and numbers are in [AUDIT.md](AUDIT.md).
 - [x] FastAPI serves the built client (`dist/public`) with SPA fallback. Old endpoints stay only as thin adapters, or are removed once the client no longer uses them.
 
 ## Phase 5 — Frontend
-- [ ] Remove `server/`, `drizzle/`, `shared/_core`, tRPC, react-query, `ComponentShowcase`, `DashboardLayout*`, and unused `components/ui/*` (≤ 12 left). Drop unused dependencies from `package.json`.
-- [ ] `client/src/lib/api.ts` talks to `/api/v1/*` only. One `live` poll per 60 s (paused when the tab is hidden) plus series/energy on demand. No `debugger`, no i18n `debug`. The double-load bug is fixed and dates use Asia/Damascus.
-- [ ] Add a Garden zone card and a battery card per battery showing its owning zones (en + ar strings).
-- [ ] Charts: pre-bucketed data, memoized. `GridTrendsPanel` is lazy-loaded.
-- [ ] `pnpm check` and `pnpm build:client` pass. The main JS chunk is ≤ 350 KB (uncompressed, as reported by vite).
+- [x] Remove `server/`, `drizzle/`, `shared/_core`, tRPC, react-query, `ComponentShowcase`, `DashboardLayout*`, and unused `components/ui/*` (≤ 12 left). Drop unused dependencies from `package.json`.
+- [x] `client/src/lib/api.ts` talks to `/api/v1/*` only. One `live` poll per 60 s (paused when the tab is hidden) plus series/energy on demand. No `debugger`, no i18n `debug`. The double-load bug is fixed and dates use Asia/Damascus.
+- [x] Add a Garden zone card and a battery card per battery showing its owning zones (en + ar strings).
+- [x] Charts: pre-bucketed data, memoized. `GridTrendsPanel` is lazy-loaded.
+- [x] `pnpm check` and `pnpm build:client` pass. The main JS chunk is ≤ 350 KB (uncompressed, as reported by vite).
 
 ## Phase 6 — Pi deployment
-- [ ] `deploy/docker-compose.yml`: one service (backend + static client), `mem_limit`, json-file log rotation (`max-size`), `DATA_DIR` volume, `TZ=Asia/Damascus`, and `/tmp` on tmpfs.
-- [ ] Multi-stage Dockerfile: node builds the client, and the runtime image is `python:3.12-slim` only (no node_modules). It builds for `linux/arm64`.
-- [ ] `docs/DEPLOY.md`: first-run migration steps on the Pi (backup → migrate-csv --verify **on the Pi's own CSVs**; parity is per machine → run → delete-csv --confirm after a week).
+- [x] `deploy/docker-compose.yml`: one service (backend + static client), `mem_limit`, json-file log rotation (`max-size`), `DATA_DIR` volume, `TZ=Asia/Damascus`, and `/tmp` on tmpfs.
+- [x] Multi-stage Dockerfile: node builds the client, and the runtime image is `python:3.12-slim` only (no node_modules). It builds for `linux/arm64`.
+- [x] `docs/DEPLOY.md`: first-run migration steps on the Pi (backup → migrate-csv --verify **on the Pi's own CSVs**; parity is per machine → run → delete-csv --confirm after a week).
 
 ## Blockers / answers from owner
 Owner's device list (Felicity web portal screenshot, 2026-09-17). This is authoritative; discovery must match it:
@@ -89,3 +89,11 @@ Owner's device list (Felicity web portal screenshot, 2026-09-17). This is author
   - Device clocks: ground and garden devices are UTC+02:00; first-floor devices are UTC+03:00.
   - Every device reports every 300 s.
   - Cloud 5-minute history goes back to at least Feb 2026.
+- **Phase 5 note:** the old 1,046-line `GridTrendsPanel` was replaced by `EnergyPanel` (day/month/cycle/year, tiered bill, recent cycles). `EnergyPanel` and `PowerChart` are lazy-loaded, so recharts stays out of the first-paint bundle.
+- **Phase 6 note (2026-09-17):** `docker buildx build --platform linux/arm64` could not run on the dev Mac: the Docker daemon could not pull any image (Docker Hub and mirror.gcr.io both stalled; Docker Hub restricts Syria). The build was verified step by step without Docker instead:
+  - clean context filtered by `.dockerignore`
+  - `pnpm install --frozen-lockfile` and `pnpm run build`
+  - `pip install -r requirements.txt`
+  - uvicorn serving `/` and `/api/v1/*` from the stage-2 layout
+  - `pip download --platform manylinux2014_aarch64 --only-binary=:all:` for every dependency
+  Run the real image build on the Pi or a machine that can pull images (docs/DEPLOY.md).

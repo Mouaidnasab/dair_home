@@ -1,0 +1,91 @@
+# Deploying on the Raspberry Pi
+
+One container, one process: FastAPI collects from the Felicity cloud, stores it in SQLite on
+`/srv/dair/data`, and serves the dashboard on port 8000. The Node server is gone.
+
+## What touches the SD card
+
+| What | How often | Size |
+|---|---|---|
+| New samples (5 devices × one every 5 min) | one transaction every 15 min (`FLUSH_INTERVAL`) | about 220 KB per day |
+| Rollups (hourly and daily kWh) | same transaction | a few KB |
+| Retention (delete raw rows older than 180 days, archive them first) | daily at 03:30 | — |
+| Logs | only warnings, deduplicated; Docker keeps 3 × 1 MB | ≤ 3 MB |
+
+- `/api/v1/live` is served from RAM.
+- Charts read at most 300 rows.
+- Bill views read the daily totals.
+- On a power cut you lose at most the last 15 minutes of the buffer. The next start re-downloads it from the cloud's 5-minute history.
+
+## First run: migrate the old CSV data
+
+Do this on the Pi, against the Pi's own CSVs. A parity check on another machine proves nothing
+about the files on the Pi.
+
+```bash
+# 0. stop the old stack (Node + old backend) and back up the old data
+docker compose down            # in the old deployment directory
+sudo tar czf ~/dair-csv-backup-$(date +%F).tgz -C /path/to/old/backend data
+
+# 1. put the old CSVs where the new container can read them
+sudo mkdir -p /srv/dair/data/legacy
+sudo cp /path/to/old/backend/data/*.csv /srv/dair/data/legacy/
+sudo chown -R 1000:1000 /srv/dair/data
+
+# 2. build and start the new container
+cd ~/dair_home
+docker compose -f deploy/docker-compose.yml up -d --build
+
+# 3. import the CSVs; --verify exits non-zero if any file fails parity
+docker exec dair-home python -m app.cli migrate-csv --src /data/legacy --verify
+#    re-running is safe: it inserts 0 rows and verifies again
+
+# 4. (optional) pull older history from the cloud: it keeps 5-minute data for months
+docker exec dair-home python -m app.cli backfill --days 240
+```
+
+After a week of the new system running correctly, delete the migrated CSVs. Only files whose
+import passed parity and haven't changed since are removed:
+
+```bash
+docker exec dair-home python -m app.cli delete-csv --src /data/legacy            # dry run: lists files
+docker exec dair-home python -m app.cli delete-csv --src /data/legacy --confirm
+```
+
+## Retention
+
+- **Automatic:** retention runs daily at 03:30 (Asia/Damascus). It works in this order:
+  1. Brings the hourly and daily rollups up to date.
+  2. Writes raw samples older than `RAW_RETENTION_DAYS` to `/data/archive/samples_YYYY-MM_*.csv.gz`.
+  3. Deletes those raw samples one day at a time.
+  4. Returns the freed pages to the filesystem.
+- **Charts for older days:** they still work, using hourly averages from the rollups.
+- **Run it by hand, or preview it:**
+
+  ```bash
+  docker exec dair-home python -m app.cli retention --dry-run
+  docker exec dair-home python -m app.cli retention --raw-days 90 --archive-dir /data/archive
+  ```
+
+- **Move the archive off the card:** copy `/data/archive` to a NAS or USB disk now and then, then delete it from the card.
+
+## Schema changes
+
+- **Where they live:** `backend/app/migrations/NNN_*.sql`.
+- **When they run:** at startup, recorded in `schema_version`.
+- **How to add one:** add a new numbered file. Never edit one that has already shipped.
+- **Before upgrading:** back up with `sqlite3 /srv/dair/data/dair.sqlite3 ".backup /srv/dair/data/backup.sqlite3"`.
+
+## Devices
+
+- **Configuration:** `backend/topology.toml` lists plants, zones, inverters and batteries, including which zones a shared battery serves.
+- **Checking for new devices:**
+  1. After adding a device in the Felicity app, run `docker exec dair-home python -m app.cli discover`. It flags any device missing from `topology.toml`.
+  2. Add the device to `topology.toml`, then rebuild.
+
+## Building for the Pi from another machine
+
+```bash
+docker buildx build --platform linux/arm64 -t dair-home:latest --load .
+docker save dair-home:latest | ssh pi 'docker load'
+```

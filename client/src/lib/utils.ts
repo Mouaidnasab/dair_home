@@ -5,211 +5,58 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-/**
- * Format relative time (e.g., "2 minutes ago")
- */
-export function formatRelativeTime(date: Date | string): string {
-  const d = typeof date === "string" ? new Date(date) : date;
-  const now = new Date();
-  const seconds = Math.floor((now.getTime() - d.getTime()) / 1000);
+export const HOME_TZ = "Asia/Damascus";
 
-  if (seconds < 60) return "just now";
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
-  return `${Math.floor(seconds / 86400)}d ago`;
+/** YYYY-MM-DD for "now" (or a unix time) in the home's timezone, independent of the browser's. */
+export function localDay(ts?: number): string {
+  const d = ts === undefined ? new Date() : new Date(ts * 1000);
+  return new Intl.DateTimeFormat("en-CA", { timeZone: HOME_TZ, year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
 }
 
-/**
- * Format absolute time with timezone
- */
-export function formatAbsoluteTime(
-  date: Date | string,
-  timezone?: string,
-): string {
-  const d = typeof date === "string" ? new Date(date) : date;
-  const timeStr = d.toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: true,
-  });
-
-  const dateStr = d.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-
-  let tzStr = "";
-  if (timezone) {
-    tzStr = ` (${timezone})`;
-  }
-
-  return `${dateStr} ${timeStr}${tzStr}`;
+export function shiftDay(day: string, days: number): string {
+  const d = new Date(`${day}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
 }
 
-/**
- * Format power value (W → kW if >= 1000)
- */
-export function formatPower(watts: number | undefined): string {
-  if (watts === undefined || isNaN(watts)) return "N/A";
+export function shiftMonth(day: string, months: number): string {
+  const d = new Date(`${day.slice(0, 7)}-01T12:00:00Z`);
+  d.setUTCMonth(d.getUTCMonth() + months);
+  return d.toISOString().slice(0, 10);
+}
+
+export function formatClock(ts: number, lang: string): string {
+  return new Date(ts * 1000).toLocaleTimeString(lang, { timeZone: HOME_TZ, hour: "2-digit", minute: "2-digit" });
+}
+
+export function formatPower(watts: number | null | undefined): string {
+  if (watts === null || watts === undefined || Number.isNaN(watts)) return "—";
   const abs = Math.abs(watts);
-  if (abs >= 1000) {
-    return `${(watts / 1000).toFixed(1)} kW`;
-  }
-  return `${Math.round(watts)} W`;
+  return abs >= 1000 ? `${(watts / 1000).toFixed(abs >= 10000 ? 0 : 1)} kW` : `${Math.round(watts)} W`;
 }
 
-/**
- * Format energy value (kWh)
- */
-export function formatEnergy(kwh: number): string {
-  if (kwh >= 100) {
-    return `${Math.round(kwh)} kWh`;
-  }
-  return `${kwh.toFixed(2)} kWh`;
+export function formatEnergy(kwh: number | null | undefined): string {
+  if (kwh === null || kwh === undefined) return "—";
+  return kwh >= 100 ? `${Math.round(kwh)} kWh` : `${kwh.toFixed(kwh >= 10 ? 1 : 2)} kWh`;
 }
 
-/**
- * Format currency with proper locale
- */
-export function formatCurrency(amount: number, currency: string): string {
-  // For SYP related currencies, just show the amount with currency code
-  if (currency === "SYP" || currency === "NEW SYP") {
-    return `${Math.round(amount).toLocaleString()} ${currency}`;
-  }
-
-  const formatter = new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: 0,
-  });
-  return formatter.format(amount);
+export function formatMoney(amount: number | null | undefined, currency: string): string {
+  if (amount === null || amount === undefined) return "—";
+  const digits = currency === "USD" || currency === "SAR" ? 2 : 0;
+  return `${amount.toLocaleString(undefined, { maximumFractionDigits: digits, minimumFractionDigits: digits })} ${currency}`;
 }
 
-/**
- * Get color for estimated cost based on currency thresholds
- * 0 is green, 100% threshold is red
- */
-export function getCostColor(val: number, currency: string): string {
-  if (val <= 0) return "rgb(34, 197, 94)"; // green-500
-
-  let threshold = 10000; // default SYP
-  if (currency === "NEW SYP") threshold = 100;
-  if (currency === "USD") threshold = 1;
-  if (currency === "SAR") threshold = 4;
-
-  const ratio = Math.min(val / threshold, 1);
-
-  // Interpolate between Green (34, 197, 94) and Red (239, 68, 68)
-  const r = Math.round(34 + ratio * (239 - 34));
-  const g = Math.round(197 + ratio * (68 - 197));
-  const b = Math.round(94 + ratio * (68 - 94));
-
-  return `rgb(${r}, ${g}, ${b})`;
+export function formatAge(seconds: number | null): string {
+  if (seconds === null) return "—";
+  if (seconds < 90) return "now";
+  if (seconds < 3600) return `${Math.round(seconds / 60)}m`;
+  if (seconds < 86400) return `${Math.round(seconds / 3600)}h`;
+  return `${Math.round(seconds / 86400)}d`;
 }
 
-/**
- * Calculate estimated runtime in hours
- */
-export function calculateEstimatedRuntime(
-  socPercent: number,
-  loadW: number,
-  batteryCapacityWh: number = 10000,
-): number {
-  loadW = loadW * -1;
-  if (loadW <= 0) return Infinity;
-  const energyAvailableWh = (socPercent / 100) * batteryCapacityWh;
-  return energyAvailableWh / loadW;
-}
-
-/**
- * Get color for battery SOC percentage
- */
-export function getBatteryColor(soc: number): string {
-  // Red (239, 68, 68) -> Yellow (234, 179, 8) -> Green (34, 197, 94)
-  if (soc <= 20) {
-    const ratio = soc / 20;
-    const r = Math.round(239 + ratio * (234 - 239));
-    const g = Math.round(68 + ratio * (179 - 68));
-    const b = Math.round(68 + ratio * (8 - 68));
-    return `rgb(${r}, ${g}, ${b})`;
-  } else {
-    const ratio = Math.min((soc - 20) / 80, 1);
-    const r = Math.round(234 + ratio * (34 - 234));
-    const g = Math.round(179 + ratio * (197 - 179));
-    const b = Math.round(8 + ratio * (94 - 8));
-    return `rgb(${r}, ${g}, ${b})`;
-  }
-}
-
-/**
- * Format runtime as human-readable string
- */
-export function formatRuntime(hours: number): string {
-  if (!isFinite(hours)) return "∞";
-  if (hours < 1) {
-    return `${Math.round(hours * 60)}m`;
-  }
-  const h = Math.floor(hours);
-  const m = Math.round((hours - h) * 60);
-  return `${h}h ${m}m`;
-}
-
-/**
- * Get status color for display
- */
-export function getStatusColor(status: "normal" | "warning" | "fault"): string {
-  switch (status) {
-    case "normal":
-      return "bg-green-500";
-    case "warning":
-      return "bg-yellow-500";
-    case "fault":
-      return "bg-red-500";
-  }
-}
-
-/**
- * Get battery state color
- */
-export function getBatteryStateColor(
-  state: "idle" | "charging" | "discharging",
-): string {
-  switch (state) {
-    case "charging":
-      return "text-green-600 dark:text-green-400";
-    case "discharging":
-      return "text-orange-600 dark:text-orange-400";
-    case "idle":
-      return "text-gray-600 dark:text-gray-400";
-  }
-}
-
-/**
- * Get battery state label
- */
-export function getBatteryStateLabel(
-  state: "idle" | "charging" | "discharging",
-): string {
-  switch (state) {
-    case "charging":
-      return "Charging";
-    case "discharging":
-      return "Discharging";
-    case "idle":
-      return "Idle";
-  }
-}
-
-/**
- * Format time as HH:MM
- */
-export function formatTime(date: Date | string): string {
-  const d = typeof date === "string" ? new Date(date) : date;
-  return d.toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-  });
+export function socColor(soc: number | null | undefined): string {
+  if (soc === null || soc === undefined) return "bg-muted-foreground";
+  if (soc >= 60) return "bg-emerald-500";
+  if (soc >= 30) return "bg-amber-500";
+  return "bg-red-500";
 }

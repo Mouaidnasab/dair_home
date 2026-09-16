@@ -1,0 +1,33 @@
+# Raspberry Pi deployment. From the repo root:
+#   docker compose -f deploy/docker-compose.yml up -d --build
+# See docs/DEPLOY.md for the first-run migration of the old CSV data.
+services:
+  dair:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    image: dair-home:latest
+    container_name: dair-home
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - ../backend/.env            # FELICITY_USER, FELICITY_PASS, API_KEY_EXCHANGE
+    environment:
+      TZ: Asia/Damascus
+      DATA_DIR: /data
+      FLUSH_INTERVAL: "900"        # seconds between SQLite writes (one transaction each)
+      BACKFILL_MAX_DAYS: "7"       # gap filled from the cloud on start
+      RAW_RETENTION_DAYS: "180"    # 5-minute samples; hourly/daily totals are kept forever
+      ARCHIVE_DIR: /data/archive   # monthly csv.gz of raw samples before deletion
+    volumes:
+      - ${DAIR_DATA_DIR:-/srv/dair/data}:/data
+    tmpfs:
+      - /tmp:size=16m
+    mem_limit: 192m
+    memswap_limit: 192m
+    logging:
+      driver: json-file
+      options:
+        max-size: "1m"
+        max-file: "3"
