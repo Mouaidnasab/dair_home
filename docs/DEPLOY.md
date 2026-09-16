@@ -9,7 +9,7 @@ One container, one process: FastAPI collects from the Felicity cloud, stores it 
 |---|---|---|
 | New samples (5 devices × one every 5 min) | one transaction every 15 min (`FLUSH_INTERVAL`) | about 220 KB per day |
 | Rollups (hourly and daily kWh) | same transaction | a few KB |
-| Retention (delete raw rows older than 180 days, archive them first) | daily at 03:30 | — |
+| Retention (delete raw rows older than 180 days) | daily at 03:30 | frees space |
 | Logs | only warnings, deduplicated; Docker keeps 3 × 1 MB | ≤ 3 MB |
 
 - `/api/v1/live` is served from RAM.
@@ -36,12 +36,17 @@ sudo chown -R 1000:1000 /srv/dair/data
 cd ~/dair_home
 docker compose -f deploy/docker-compose.yml up -d --build
 
-# 3. import the CSVs; --verify exits non-zero if any file fails parity
-docker exec dair-home python -m app.cli migrate-csv --src /data/legacy --verify
-#    re-running is safe: it inserts 0 rows and verifies again
+# 3. import the CSVs in a one-off container with the collector off. It gets its own memory
+#    limit, so it doesn't compete with the running service. Expect 10-20 minutes for a
+#    year of CSVs on a Pi. --verify exits non-zero if any file fails its parity check.
+docker compose -f deploy/docker-compose.yml run --rm -e COLLECTOR_ENABLED=0 dair \
+    python -m app.cli migrate-csv --src /data/legacy --verify
+#    Re-running is safe: files already imported insert 0 rows and are verified again.
+#    If it stops with "database is locked" (a service flush landed at the same moment),
+#    just run it again.
 
 # 4. (optional) pull older history from the cloud: it keeps 5-minute data for months
-docker exec dair-home python -m app.cli backfill --days 240
+docker compose -f deploy/docker-compose.yml run --rm -e COLLECTOR_ENABLED=0 dair python -m app.cli backfill --days 240
 ```
 
 After a week of the new system running correctly, delete the migrated CSVs. Only files whose
@@ -56,7 +61,7 @@ docker exec dair-home python -m app.cli delete-csv --src /data/legacy --confirm
 
 - **Automatic:** retention runs daily at 03:30 (Asia/Damascus). It works in this order:
   1. Brings the hourly and daily rollups up to date.
-  2. Writes raw samples older than `RAW_RETENTION_DAYS` to `/data/archive/samples_YYYY-MM_*.csv.gz`.
+  2. Only if `ARCHIVE_DIR` is set: writes raw samples older than `RAW_RETENTION_DAYS` to `ARCHIVE_DIR/samples_YYYY-MM_*.csv.gz`.
   3. Deletes those raw samples one day at a time.
   4. Returns the freed pages to the filesystem.
 - **Charts for older days:** they still work, using hourly averages from the rollups.
@@ -64,10 +69,10 @@ docker exec dair-home python -m app.cli delete-csv --src /data/legacy --confirm
 
   ```bash
   docker exec dair-home python -m app.cli retention --dry-run
-  docker exec dair-home python -m app.cli retention --raw-days 90 --archive-dir /data/archive
+  docker exec dair-home python -m app.cli retention --raw-days 90 --archive-dir /mnt/usb/dair-archive
   ```
 
-- **Move the archive off the card:** copy `/data/archive` to a NAS or USB disk now and then, then delete it from the card.
+- **Archive:** off by default. An archive on the SD card would just move the data around on the same card, and the cloud keeps 5-minute history for months anyway. To keep raw history, mount a USB disk or NAS share and set `ARCHIVE_DIR` to a path on that mount.
 
 ## Schema changes
 

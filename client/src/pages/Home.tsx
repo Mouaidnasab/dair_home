@@ -28,7 +28,7 @@ export default function Home() {
   const errors = data ? Object.keys(data.collector.errors).length : 0;
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
+    <div className="flex min-h-screen flex-col overflow-x-hidden bg-background">
       <Header updatedTs={data?.home.updated_ts ?? null} loading={live.loading} onRefresh={live.refresh} />
       <main className="container flex-1 space-y-4 py-4 sm:py-6">
         {live.error && (
@@ -43,7 +43,7 @@ export default function Home() {
 
         {data ? <HomeOverview home={data.home} /> : <Placeholder h="h-24" />}
 
-        <section className="grid gap-4 md:grid-cols-3">
+        <section className="grid min-w-0 gap-4 md:grid-cols-3">
           {data
             ? data.zones.map(z => (
                 <ZoneCard key={z.zone} zone={z} batteries={z.battery_sns.map(sn => batteriesBySn.get(sn)).filter(b => b !== undefined)} />
@@ -51,7 +51,7 @@ export default function Home() {
             : [0, 1, 2].map(i => <Placeholder key={i} h="h-64" />)}
         </section>
 
-        <section className="grid gap-4 md:grid-cols-2">
+        <section className="grid min-w-0 gap-4 md:grid-cols-2">
           {data ? data.batteries.map(b => <BatteryCard key={b.sn} battery={b} />) : [0, 1].map(i => <Placeholder key={i} />)}
         </section>
 

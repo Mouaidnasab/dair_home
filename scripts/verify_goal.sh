@@ -67,6 +67,23 @@ check "client uses /api/v1 only" bash -c 'grep -q "/api/v1/" client/src/lib/api.
 check "garden strings en+ar" bash -c 'grep -qi garden client/src/locales/en/translation.json && grep -qi garden client/src/locales/ar/translation.json'
 check "tsc" bash -c "test -x node_modules/.bin/tsc || { echo run pnpm install; exit 1; }; node_modules/.bin/tsc --noEmit"
 check "client build + main chunk <=350KB" bash -c 'test -x node_modules/.bin/vite || { echo run pnpm install; exit 1; }; node_modules/.bin/vite build >/tmp/vb.log 2>&1 || exit 1; f=$(ls -S dist/public/assets/*.js | head -1); s=$(wc -c < "$f"); echo "$f $s"; [ "$s" -le 358400 ]'
+check "no import cycles between built chunks; entry chunk does not load charts" python3 - <<'PY'
+import glob, os, re, sys
+files = {os.path.basename(f): open(f).read() for f in glob.glob("dist/public/assets/*.js")}
+deps = {f: set(re.findall(r'from\s*"\./([^"]+\.js)"', src)) for f, src in files.items()}
+def reach(start):
+    seen, stack = set(), [start]
+    while stack:
+        for d in deps.get(stack.pop(), ()):
+            if d not in seen:
+                seen.add(d); stack.append(d)
+    return seen
+cycles = [f for f in deps if f in reach(f)]
+entry = [f for f in files if f.startswith("index-")]
+eager_charts = [f for f in entry if any(d.startswith("charts") for d in reach(f))]
+print("cycles:", cycles, "entry loads charts:", eager_charts)
+sys.exit(1 if cycles or eager_charts or not entry else 0)
+PY
 
 echo "== Phase 6: deploy"
 check "compose has mem_limit + log rotation" bash -c 'grep -q mem_limit deploy/docker-compose.yml && grep -q max-size deploy/docker-compose.yml && grep -q tmpfs deploy/docker-compose.yml'

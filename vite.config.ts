@@ -16,16 +16,16 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       output: {
-        // Small, cache-friendly vendor chunks; the chart libraries only load with the lazy chart cards.
-        manualChunks(id) {
+        // Vendor chunks that only depend "downwards" (charts -> vendor), so chunks never import each
+        // other in a cycle. Chart libraries load only with the lazy chart cards.
+        manualChunks(rawId) {
+          if (rawId.includes("commonjsHelpers")) return "vendor";
+          const id = rawId.replace(/^\0/, ""); // CommonJS proxy modules follow the package they wrap
           if (!id.includes("node_modules")) return undefined;
-          if (/[\\/](react|react-dom|scheduler)[\\/]/.test(id)) return "react";
-          if (/i18next/.test(id)) return "i18n";
-          if (/[\\/](d3-[^\\/]+|victory-vendor|internmap)[\\/]/.test(id)) return "charts-d3";
-          if (/[\\/](lodash|recharts-scale|react-smooth|decimal\.js-light|eventemitter3|tiny-invariant)[\\/]/.test(id)) return "charts-util";
+          if (/[\\/](d3-[^\\/]+|victory-vendor|internmap|lodash|recharts-scale|react-smooth|decimal\.js-light|eventemitter3|tiny-invariant|fast-equals)[\\/]/.test(id)) return "charts-deps";
           if (/[\\/]recharts[\\/]/.test(id)) return "charts";
-          if (/@radix-ui|@floating-ui/.test(id)) return "radix";
-          return undefined;
+          if (/i18next/.test(id)) return "i18n";
+          return "vendor";
         },
       },
     },

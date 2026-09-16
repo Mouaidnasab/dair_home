@@ -27,9 +27,9 @@ export default function Header({ updatedTs, loading, onRefresh }: HeaderProps) {
   return (
     <header className="sticky top-0 z-40 border-b bg-background/90 backdrop-blur">
       <div className="container flex h-14 items-center justify-between gap-2">
-        <h1 className="text-base font-bold tracking-tight">{t("app.title")}</h1>
-        <div className="flex items-center gap-1">
-          <Button variant="ghost" size="sm" className="gap-2 rounded-full" onClick={onRefresh} aria-label={t("common.refresh")}>
+        <h1 className="min-w-0 truncate text-sm font-bold tracking-tight sm:text-base">{t("app.title")}</h1>
+        <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
+          <Button variant="ghost" size="sm" className="gap-1.5 rounded-full px-2" onClick={onRefresh} aria-label={t("common.refresh")}>
             <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
             <span className="text-xs text-muted-foreground tabular-nums">
               {updatedTs ? formatClock(updatedTs, i18n.language) : "—"}
@@ -37,8 +37,8 @@ export default function Header({ updatedTs, loading, onRefresh }: HeaderProps) {
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="gap-1.5 rounded-full" title={t("common.currency")}>
-                <Coins className="h-4 w-4 text-primary" />
+              <Button variant="ghost" size="sm" className="gap-1.5 rounded-full px-2" title={t("common.currency")}>
+                <Coins className="hidden h-4 w-4 text-primary sm:block" />
                 <span className="text-xs font-semibold">{currency}</span>
               </Button>
             </DropdownMenuTrigger>
@@ -53,10 +53,10 @@ export default function Header({ updatedTs, loading, onRefresh }: HeaderProps) {
           <Button
             variant="ghost"
             size="sm"
-            className="gap-1.5 rounded-full"
+            className="gap-1.5 rounded-full px-2"
             onClick={() => i18n.changeLanguage(i18n.language === "ar" ? "en" : "ar")}
           >
-            <Globe className="h-4 w-4 text-primary" />
+            <Globe className="hidden h-4 w-4 text-primary sm:block" />
             <span className="text-xs font-semibold">{i18n.language === "ar" ? "EN" : "ع"}</span>
           </Button>
           <Button variant="ghost" size="icon" className="rounded-full" onClick={toggleTheme} aria-label={t("common.theme")}>

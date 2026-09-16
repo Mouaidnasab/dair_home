@@ -10,4 +10,3 @@ backend/data
 backend/token.txt
 dist
 node_modules
-server/_core/env.ts

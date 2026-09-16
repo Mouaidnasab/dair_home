@@ -175,7 +175,8 @@ def create_app(services: Services | None = None, start_background: bool = True) 
                           "tiers": _tiers(s, cycle_kwh, currency)},
             },
             "breakdown": [
-                {**{k: v for k, v in b.items() if k != "cost_syp"}, "cost": _money(s.rates, b["cost_syp"], currency)}
+                {**{k: v for k, v in b.items() if k != "cost_syp"},
+                 "cost": None if b["cost_syp"] is None else _money(s.rates, b["cost_syp"], currency)}
                 for b in breakdown
             ],
         }
@@ -448,5 +449,6 @@ def _hourly_breakdown(store: Store, sns: list[str], d: date) -> list[dict]:
         f"WHERE device_sn IN ({_in(sns)}) AND bucket >= ? AND bucket < ? GROUP BY bucket ORDER BY bucket",
         (*sns, start, end),
     )
-    return [{"key": datetime.fromtimestamp(r["bucket"], LOCAL_TZ).strftime("%H:00"), **_totals([dict(r)]), "cost_syp": 0.0}
+    # Tariff cost is defined per day (marginal within the cycle); hours carry no cost of their own.
+    return [{"key": datetime.fromtimestamp(r["bucket"], LOCAL_TZ).strftime("%H:00"), **_totals([dict(r)]), "cost_syp": None}
             for r in rows]

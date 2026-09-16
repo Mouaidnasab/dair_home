@@ -19,7 +19,9 @@ services:
       FLUSH_INTERVAL: "900"        # seconds between SQLite writes (one transaction each)
       BACKFILL_MAX_DAYS: "7"       # gap filled from the cloud on start
       RAW_RETENTION_DAYS: "180"    # 5-minute samples; hourly/daily totals are kept forever
-      ARCHIVE_DIR: /data/archive   # monthly csv.gz of raw samples before deletion
+      # ARCHIVE_DIR: /mnt/usb/dair-archive   # optional: csv.gz of raw samples before deletion.
+      #   Leave unset unless it points OFF the SD card (USB disk/NAS mount), otherwise retention
+      #   just moves the data around on the card. Totals stay in the rollups either way.
     volumes:
       - ${DAIR_DATA_DIR:-/srv/dair/data}:/data
     tmpfs:

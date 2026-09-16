@@ -90,10 +90,11 @@ Owner's device list (Felicity web portal screenshot, 2026-09-17). This is author
   - Every device reports every 300 s.
   - Cloud 5-minute history goes back to at least Feb 2026.
 - **Phase 5 note:** the old 1,046-line `GridTrendsPanel` was replaced by `EnergyPanel` (day/month/cycle/year, tiered bill, recent cycles). `EnergyPanel` and `PowerChart` are lazy-loaded, so recharts stays out of the first-paint bundle.
-- **Phase 6 note (2026-09-17):** `docker buildx build --platform linux/arm64` could not run on the dev Mac: the Docker daemon could not pull any image (Docker Hub and mirror.gcr.io both stalled; Docker Hub restricts Syria). The build was verified step by step without Docker instead:
+- **Phase 6 note (2026-09-17):** the image itself has **not** been built yet. On the dev Mac, Docker Desktop was unhealthy: pulls hung inside `docker-credential-desktop get`, and after a restart even `docker info` hung. The host reaches `registry-1.docker.io` normally (HTTP 401 in 0.46 s), so this is a local Docker Desktop problem, not a registry block. The build was verified step by step without Docker instead:
   - clean context filtered by `.dockerignore`
   - `pnpm install --frozen-lockfile` and `pnpm run build`
   - `pip install -r requirements.txt`
   - uvicorn serving `/` and `/api/v1/*` from the stage-2 layout
   - `pip download --platform manylinux2014_aarch64 --only-binary=:all:` for every dependency
-  Run the real image build on the Pi or a machine that can pull images (docs/DEPLOY.md).
+  The first real `docker compose ... up --build` happens on the Pi (docs/DEPLOY.md).
+- **Phase 5 render check (2026-09-17):** the built dashboard was rendered in headless Chrome against live data. That caught and fixed a vendor-chunk import cycle that left the page blank ("reading 'forwardRef'"). `verify_goal.sh` now fails on chunk import cycles. English and Arabic (RTL) layouts were checked at desktop width and at 520 px.

@@ -54,8 +54,8 @@ function ZoneCard({ zone, batteries }: ZoneCardProps) {
         </div>
         {batteries.map(b => (
           <div key={b.sn} className="flex items-center gap-3 text-xs">
-            <span className="w-28 shrink-0 truncate text-muted-foreground">
-              {b.zones.length > 1 ? t("battery.shared") : t("battery.title")} · {b.model}
+            <span className="w-28 shrink-0 truncate text-muted-foreground" title={`${b.model} · ${b.sn}`}>
+              {b.zones.length > 1 ? t("battery.shared") : t("battery.title")}
             </span>
             <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
               <div className={cn("h-full rounded-full", socColor(b.soc))} style={{ width: `${b.soc ?? 0}%` }} />

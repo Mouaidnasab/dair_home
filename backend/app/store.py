@@ -29,6 +29,7 @@ class Store:
         c.execute("PRAGMA auto_vacuum=INCREMENTAL")
         c.execute("PRAGMA journal_mode=WAL")
         c.execute("PRAGMA synchronous=NORMAL")
+        c.execute("PRAGMA busy_timeout=10000")  # CLI and service may write at the same moment
         c.execute("PRAGMA wal_autocheckpoint=256")  # checkpoint every ~1 MB of WAL instead of 4 MB
         c.execute("PRAGMA journal_size_limit=1048576")  # and truncate the WAL file back to 1 MB
         c.execute("PRAGMA temp_store=MEMORY")
