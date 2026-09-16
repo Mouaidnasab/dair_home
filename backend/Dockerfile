@@ -8,6 +8,8 @@ WORKDIR /app
 COPY requirements.txt .
 
 # Install dependencies
+RUN apt-get update && apt-get install -y ca-certificates && update-ca-certificates && rm -rf /var/lib/apt/lists/*
+RUN pip install --no-cache-dir --upgrade certifi
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the rest of your application

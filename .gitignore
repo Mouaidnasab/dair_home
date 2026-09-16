@@ -9,3 +9,10 @@ node_modules/.pnpm-workspace-state.json
 node_modules/.pnpm/@medv+finder@4.0.2/node_modules/@medv/finder/finder.d.ts
 node_modules/.pnpm/@medv+finder@4.0.2/node_modules/@medv/finder/finder.js
 server/_core/env.ts
+backend/.venv
+__pycache__
+.pytest_cache
+dist
+backend/data
+*.sqlite3
+*.sqlite3-*

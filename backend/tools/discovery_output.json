@@ -1,0 +1,85 @@
+{
+  "plants": [
+    {
+      "id": "11728964549835233",
+      "plantName": "Garden",
+      "plantType": "HO",
+      "onGridType": "ES",
+      "status": "N",
+      "timeZone": "UTC+02:00"
+    },
+    {
+      "id": "11160032281678305",
+      "plantName": "first floor",
+      "plantType": "HO",
+      "onGridType": "ES",
+      "status": "N",
+      "timeZone": "UTC+03:00"
+    },
+    {
+      "id": "11160008309715425",
+      "plantName": "grand floor",
+      "plantType": "HO",
+      "onGridType": "ES",
+      "status": "N",
+      "timeZone": "UTC+02:00"
+    }
+  ],
+  "devices": [
+    {
+      "deviceSn": "072604820026022401",
+      "deviceType": "BP",
+      "alias": "battery garden",
+      "deviceModel": "FLA48200",
+      "plantId": "11728964549835233",
+      "plantName": "Garden",
+      "status": "NM",
+      "timeZone": "UTC+02:00",
+      "reportFreq": 300
+    },
+    {
+      "deviceSn": "020308004825441198",
+      "deviceType": "OG",
+      "alias": "inventor",
+      "deviceModel": "IVEM8048",
+      "plantId": "11728964549835233",
+      "plantName": "Garden",
+      "status": "NM",
+      "timeZone": "UTC+02:00",
+      "reportFreq": 300
+    },
+    {
+      "deviceSn": "072604830025322349",
+      "deviceType": "BP",
+      "alias": "battery",
+      "deviceModel": "FLA48300",
+      "plantId": "11160032281678305",
+      "plantName": "first floor",
+      "status": "NM",
+      "timeZone": "UTC+03:00",
+      "reportFreq": 300
+    },
+    {
+      "deviceSn": "020308004825320563",
+      "deviceType": "OG",
+      "alias": "020308004825320563",
+      "deviceModel": "IVEM8048",
+      "plantId": "11160032281678305",
+      "plantName": "first floor",
+      "status": "NM",
+      "timeZone": "UTC+03:00",
+      "reportFreq": 300
+    },
+    {
+      "deviceSn": "020308004825320226",
+      "deviceType": "OG",
+      "alias": "020308004825320226",
+      "deviceModel": "IVEM8048",
+      "plantId": "11160008309715425",
+      "plantName": "grand floor",
+      "status": "NM",
+      "timeZone": "UTC+02:00",
+      "reportFreq": 300
+    }
+  ]
+}

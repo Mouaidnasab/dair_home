@@ -1,6 +1,6 @@
 fastapi
 uvicorn
-apscheduler
+apscheduler>=3.10,<4
 httpx
 python-dotenv
 cryptography
