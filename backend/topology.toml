@@ -1,0 +1,70 @@
+# Home energy topology. Generated from `python tools/discover.py` (see tools/discovery_output.json)
+# and reconciled with the owner's device table in docs/GOAL.md.
+#
+# zone     : "ground" | "first" | "garden" — how the dashboard groups things.
+# kind     : "inverter" (Felicity deviceType OG) | "battery" (deviceType BP).
+# zones    : zones a device serves. Energy flows come from inverters only, so a battery shared
+#            by several zones is never double-counted; batteries supply SoC/SoH/cell data.
+# tz       : the device clock's UTC offset; the cloud reports sample times in this local clock.
+
+[[plant]]
+id = "11160008309715425"
+name = "grand floor"
+zone = "ground"
+label = "Ground Floor"
+
+[[plant]]
+id = "11160032281678305"
+name = "first floor"
+zone = "first"
+label = "First Floor"
+
+[[plant]]
+id = "11728964549835233"
+name = "Garden"
+zone = "garden"
+label = "Garden"
+
+[[device]]
+sn = "020308004825320226"
+kind = "inverter"
+model = "IVEM8048"
+plant = "11160008309715425"
+zones = ["ground"]
+tz = "UTC+02:00"
+
+[[device]]
+sn = "020308004825320563"
+kind = "inverter"
+model = "IVEM8048"
+plant = "11160032281678305"
+zones = ["first"]
+tz = "UTC+03:00"
+
+[[device]]
+sn = "072604830025322349"
+kind = "battery"
+model = "FLA48300"
+alias = "battery"
+plant = "11160032281678305"
+# Portal lists it under first floor only, but it is wired to both the first and ground inverters.
+zones = ["first", "ground"]
+tz = "UTC+03:00"
+
+[[device]]
+sn = "020308004825441198"
+kind = "inverter"
+model = "IVEM8048"
+alias = "inventor"
+plant = "11728964549835233"
+zones = ["garden"]
+tz = "UTC+02:00"
+
+[[device]]
+sn = "072604820026022401"
+kind = "battery"
+model = "FLA48200"
+alias = "battery garden"
+plant = "11728964549835233"
+zones = ["garden"]
+tz = "UTC+02:00"

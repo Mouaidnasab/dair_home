@@ -1,232 +1,140 @@
-/**
- * Energy Monitor Data Types
- * Flattened structure from CSV→JSON export endpoint
- */
+// Response shapes of the backend /api/v1 endpoints (backend/app/api.py).
 
-export interface EnergyRecord {
-  timestamp: string;
-  plantId: string;
-  plantLabel: string;
+export type ZoneId = "ground" | "first" | "garden";
+export type ZoneOrHome = ZoneId | "home";
+export type DeviceKind = "inverter" | "battery";
 
-  // PV/Solar Data
-  pd_pvTotalPower: number; // W (instant PV power)
-  pd_ratedPower: number; // kWp (array size)
-  pd_todayPv: number; // kWh
-  pd_monthPv: number; // kWh
-  pd_yearPv: number; // kWh
-  pd_accPv: number; // kWh
-  pd_pvTodayIncome: number; // currency amount
-  pd_monthPvIncome: number; // currency amount
-  pd_yearPvIncome: number; // currency amount
-  pd_currency: string; // e.g., "SYP"
-
-  // Environment Data
-  pd_totalReduceDeforestation: number; // Trees
-  pd_totalCo2Less: number; // kg/ton?
-  pd_totalSpareCoal: number; // kg/ton?
-
-  // Location & Status
-  pd_countryName: string;
-  pd_cityName: string;
-  pd_status: string; // "N" = Normal, others = Warning/Fault
-  pd_installDateStr: string;
-  pd_timeZone: string;
-
-  // Battery/EMS Data (shared across inverters)
-  ef_emsSoc: number; // % battery SOC
-  ef_acTotalOutActPower: number; // W load instant
-  ef_emsPower: number; // W battery charge(+)/discharge(-) power
-
-  // Grid/Gen/Meter Data
-  ef_genPower: number; // W generator input
-  ef_acTtlInPower: number; // W grid input
-  ef_meterPower: number; // W import/export at meter
-  ef_microInvTotalPower: number; // W micro-inverters
-  ef_ctThreePhaseTotalPower: number; // W measured load
-
-  // Device Info
-  ef_deviceSn: string;
-  ef_deviceModel: string;
-
-  pd_electricityPrice: number; // local price per kWh
-  ef_acRInVolt: number; // Grid Voltage (V)
+export interface SampleFields {
+  pv_w: number | null;
+  load_w: number | null;
+  grid_w: number | null;
+  grid_v: number | null;
+  grid_hz: number | null;
+  out_v: number | null;
+  bat_w: number | null;
+  soc: number | null;
+  bat_v: number | null;
+  bat_a: number | null;
+  soh: number | null;
+  temp_c: number | null;
+  inv_temp_c: number | null;
+  cell_v_max: number | null;
+  cell_v_min: number | null;
+  e_pv_today: number | null;
+  e_load_today: number | null;
+  work_mode: number | null;
 }
 
-export interface InverterData {
-  label: string;
-  pvNowW: number;
-  todayKWh: number;
-  ratedKwp: number;
-  loadW: number;
-  batteryW: number;
+export interface LiveExtra {
+  status?: string | null;
+  work_mode?: string | null;
+  priority?: string | null;
+  e_pv_month?: number | null;
+  e_pv_year?: number | null;
+  e_pv_total?: number | null;
+  cells_v?: number[];
+  cell_temps_c?: number[];
+  capacity_ah?: number | null;
+  remaining_kwh?: number | null;
+}
 
-  gridW: number;
-  incomeToday: number;
-  currency: string;
-  status: "normal" | "warning" | "fault";
+export interface DeviceLive extends SampleFields {
+  sn: string;
+  kind: DeviceKind;
+  zones: ZoneId[];
   model: string;
-  serialNumber: string;
-  timestamp: string;
+  alias: string;
+  ts: number | null;
+  age_s: number | null;
+  stale: boolean;
+  extra: LiveExtra;
 }
 
-export interface BatteryData {
-  soc: number; // %
-  powerW: number; // positive = charging, negative = discharging
-  state: "idle" | "charging" | "discharging";
-  timestamp: string;
+export interface PowerSummary {
+  pv_w: number | null;
+  load_w: number | null;
+  grid_w: number | null;
+  bat_w: number | null;
+  grid_v: number | null;
+  grid_available: boolean | null;
+  updated_ts: number | null;
+  soc: number | null;
 }
 
-export interface BatterySummary {
-  deviceSn: string;
-  deviceLabel: string;
-  battSoc: number;
-  battVolt: number;
-  battCurr: number;
-  battPower: number;
-  battTemp: number;
-  status: string;
-  timestamp: string;
+export interface ZoneLive extends PowerSummary {
+  zone: ZoneId;
+  label: string;
+  plant_id: string;
+  inverters: DeviceLive[];
+  battery_sns: string[];
 }
 
-export interface BatteryDetail extends BatterySummary {
-  cellVoltList: string[]; // parsed from string representation if needed, or kept as is
-  cellTempList: string[];
-  bmsState: string;
-  bmsChargingState: number;
-  cycles: number | null;
-  soh: string;
-  capacity: string;
+export interface LiveResponse {
+  now: number;
+  home: PowerSummary;
+  zones: ZoneLive[];
+  batteries: DeviceLive[];
+  collector: { enabled: boolean; buffered: number; last_flush_ts: number | null; errors: Record<string, string> };
 }
 
-export interface TimeSeriesPoint {
-  timestamp: string;
-  homePvPower: number; // W (sum of both inverters)
-  loadPower: number; // W
-  batteryPower: number; // W (positive = charging, negative = discharging)
-  gridPower: number; // W
-  genPower: number; // W
-  batterySoc: number; // %
-  gridVoltage: number; // V
+export interface SeriesPoint {
+  t: number;
+  pv_w: number | null;
+  load_w: number | null;
+  grid_w: number | null;
+  bat_w: number | null;
+  grid_v: number | null;
+  soc: number | null;
 }
 
-export interface DashboardData {
-  inverters: {
-    groundFloor: InverterData;
-    firstFloor: InverterData;
-  };
-  battery: BatteryData;
-  environment: {
-    co2Reduced: number;
-    treesSaved: number;
-    coalSaved: number;
-  };
-  pvStats: {
-    today: number;
-    month: number;
-    year: number;
-    total: number;
-    todayIncome: number;
-    monthIncome: number;
-    yearIncome: number;
-    currency: string;
-  };
-  location: {
-    country: string;
-    city: string;
-    timezone: string;
-  };
+export interface SeriesResponse {
+  day: string;
+  zone: ZoneOrHome | null;
+  sn: string | null;
+  bucket: number;
+  source: "samples" | "rollups" | "none";
+  points: SeriesPoint[];
+}
+
+export type Period = "day" | "month" | "cycle" | "year";
+
+export interface EnergyTotals {
+  pv_kwh: number;
+  load_kwh: number;
+  grid_kwh: number;
+  bat_charge_kwh: number;
+  bat_discharge_kwh: number;
+  grid_up_hours: number;
+}
+
+export interface Tier {
+  limit_kwh: number | null;
+  price: number | null;
+  filled_kwh: number;
+}
+
+export interface CycleBill {
+  start_day: string;
+  label: string;
+  grid_kwh: number;
+  amount: number | null;
+  tiers: Tier[];
+}
+
+export interface EnergyResponse {
+  period: Period;
+  zone: ZoneOrHome;
+  date: string;
+  start_day: string;
+  end_day: string;
   currency: string;
-  lastUpdated: string;
-  grid: {
-    isPowerOn: boolean;
-  };
+  totals: EnergyTotals;
+  bill: { grid_kwh: number; amount: number | null; cycle: CycleBill };
+  breakdown: (EnergyTotals & { key: string; cost: number | null })[];
 }
 
-export interface TrendsSeries {
-  home: TimeSeriesPoint[];
-  groundFloor: TimeSeriesPoint[];
-  firstFloor: TimeSeriesPoint[];
-}
-
-export interface GridStatsParams {
-  period?: "overview" | "day" | "month" | "cycle" | "year";
-  date_str?: string; // YYYY-MM-DD
-}
-
-export interface GridTier {
-  limit: number | string;
-  price: number;
-  filled: number;
-}
-
-export interface GridCycleStats {
-  name: string;
-  kwh: number;
-  bill_syp: number;
-  tiers: GridTier[];
-  projected_kwh?: number;
-  projected_bill_syp?: number;
-}
-
-export interface GridInsights {
-  daily_avg_kwh: number;
-  avg_grid_hours: number;
-  cycle_days_passed: number;
-  cycle_total_days: number;
-}
-
-export interface GridStats {
-  period: string;
-  timestamp: string;
-  today?: {
-    kwh: number;
-    cost_syp_marginal: number;
-    bill_syp_standalone?: number;
-  };
-  month?: {
-    kwh: number;
-    bill_syp_standalone?: number;
-  };
-  cycle?: GridCycleStats;
-  year?: {
-    kwh: number;
-    bill_syp_standalone?: number;
-  };
-  total?: {
-    kwh: number;
-    bill_syp_standalone?: number;
-  };
-
-  // Specific breakdown fields
-  ref_date?: string;
-  cycle_name?: string;
-  total_kwh?: number;
-  kwh?: number; // Single value for day/month/year requests
-  date?: string; // Date for point responses
-  bill_syp?: number;
-  bill_syp_standalone?: {
-    today: number;
-    month: number;
-    year: number;
-    total: number;
-  };
-  tiers?: GridTier[];
-  days?: Array<{ date: string; kwh: number; bill_syp?: number }>;
-  months?: Array<{ date: string; kwh: number; bill_syp?: number }>;
-  hours?: Array<{ date: string; kwh: number; bill_syp?: number }>;
-  insights?: GridInsights;
-}
-
-export interface CycleSummaryItem {
-  cycle_start: string;
-  name: string;
-  kwh: number;
-  bill_syp: number;
-  tiers: GridTier[];
-}
-
-export interface CycleSummaryResponse {
-  count: number;
-  requested_limit: number;
-  cycles: CycleSummaryItem[];
+export interface CyclesResponse {
+  zone: ZoneOrHome;
+  currency: string;
+  cycles: CycleBill[];
 }
