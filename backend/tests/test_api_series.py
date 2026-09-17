@@ -28,7 +28,8 @@ def test_series_is_capped_and_aggregated(settings, topology, store):
         home = c.get("/api/v1/series", params={"day": "2026-09-10"}).json()
         assert home["source"] == "samples"
         assert 0 < len(home["points"]) <= 300
-        assert home["points"][0]["pv_w"] == 3000.0  # three inverters summed
+        assert home["points"][0]["pv_w"] == 2000.0  # "home" system = ground + first inverters
+        assert home["points"][0]["soc"] == 60.0  # shared battery only
         garden = c.get("/api/v1/series", params={"day": "2026-09-10", "zone": "garden"}).json()
         assert garden["points"][0]["pv_w"] == 1000.0
         fine = c.get("/api/v1/series", params={"day": "2026-09-10", "bucket": 60}).json()
@@ -36,6 +37,8 @@ def test_series_is_capped_and_aggregated(settings, topology, store):
         one = c.get("/api/v1/series", params={"day": "2026-09-10", "sn": "072604820026022401"}).json()
         assert one["points"][0]["soc"] == 60.0
         assert c.get("/api/v1/series", params={"zone": "attic"}).status_code == 404
+        ground = c.get("/api/v1/series", params={"day": "2026-09-10", "zone": "ground"}).json()
+        assert ground["points"][0]["pv_w"] == 1000.0
 
 
 def test_series_falls_back_to_hourly_rollups(settings, topology, store):
@@ -50,7 +53,7 @@ def test_energy_and_cycles(settings, topology, store):
     _seed_day(store, "2026-09-10")
     with _client(settings, topology, store) as c:
         day = c.get("/api/v1/energy", params={"period": "day", "date": "2026-09-10"}).json()
-        assert round(day["totals"]["pv_kwh"]) == 72  # 3 kW for 24 h (last segment open)
+        assert round(day["totals"]["pv_kwh"]) == 48  # home system: 2 kW for 24 h
         assert day["totals"]["grid_kwh"] == 0
         assert len(day["breakdown"]) == 24
         month = c.get("/api/v1/energy", params={"period": "month", "date": "2026-09-10", "zone": "garden"}).json()

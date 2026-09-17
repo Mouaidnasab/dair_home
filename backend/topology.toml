@@ -1,7 +1,9 @@
 # Home energy topology. Generated from `python tools/discover.py` (see tools/discovery_output.json)
 # and reconciled with the owner's device table in docs/GOAL.md.
 #
-# zone     : "ground" | "first" | "garden" — how the dashboard groups things.
+# system   : independent installations. "home" = ground + first floor (they share a battery),
+#            "garden" = the garden's own inverter and battery.
+# zone     : "ground" | "first" | "garden" — one per plant.
 # kind     : "inverter" (Felicity deviceType OG) | "battery" (deviceType BP).
 # zones    : zones a device serves. Energy flows come from inverters only, so a battery shared
 #            by several zones is never double-counted; batteries supply SoC/SoH/cell data.
@@ -11,18 +13,21 @@
 id = "11160008309715425"
 name = "grand floor"
 zone = "ground"
+system = "home"
 label = "Ground Floor"
 
 [[plant]]
 id = "11160032281678305"
 name = "first floor"
 zone = "first"
+system = "home"
 label = "First Floor"
 
 [[plant]]
 id = "11728964549835233"
 name = "Garden"
 zone = "garden"
+system = "garden"
 label = "Garden"
 
 [[device]]

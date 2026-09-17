@@ -18,3 +18,9 @@ def test_zones_and_shared_battery(topology):
     assert [d.sn for d in topology.batteries("ground")] == ["072604830025322349"]
     # every inverter belongs to exactly one zone, so zone energy never double counts
     assert all(len(d.zones) == 1 for d in topology.inverters())
+
+
+def test_home_and_garden_are_separate_systems(topology):
+    assert topology.systems == ["home", "garden"]
+    assert topology.system_zones("home") == ["ground", "first"]
+    assert topology.system_zones("garden") == ["garden"]

@@ -1,12 +1,15 @@
 # dair_home
 
-Home energy monitor for the Deir Attiyeh house. It covers three Felicity IVEM8048 inverters (ground floor, first floor, garden) and two battery packs. One of the packs is shared by the ground and first floors.
+Home energy monitor for the Deir Attiyeh house: two independent solar systems on Felicity IVEM8048 inverters.
+
+- **Home:** ground floor and first floor inverters sharing one battery pack.
+- **Garden:** its own inverter and battery pack.
 
 It pulls from the Felicity Shine cloud, stores readings in SQLite, and serves a bilingual (en/ar) dashboard. It is built to run on a Raspberry Pi with an SD card.
 
 ```
 backend/          FastAPI service (collector, store, API, CLI)   → backend/app/
-backend/topology.toml   plants, zones, devices (from `python -m app.cli discover`)
+backend/topology.toml   systems, plants/zones, devices (from `python -m app.cli discover`)
 client/           React dashboard (Vite, Tailwind, recharts)
 deploy/           docker-compose for the Pi
 docs/             AUDIT.md (why v2), GOAL.md (plan), DEPLOY.md (install, migration, retention)
@@ -32,7 +35,7 @@ pnpm check && pnpm build                    # → dist/public (served by the bac
 
 | Endpoint | What it returns | Where the data comes from |
 |---|---|---|
-| `GET /api/v1/live` | Newest reading per device, grouped by zone, plus whole-home totals | RAM |
+| `GET /api/v1/live` | Newest reading per device, per zone, and per system (`home`, `garden`) | RAM |
 | `GET /api/v1/series?day=&zone=\|sn=` | One day of power, ≤ 300 points | samples (falls back to hourly rollups) |
 | `GET /api/v1/energy?period=day\|month\|cycle\|year&date=&zone=&currency=` | kWh totals, breakdown, tiered grid bill | rollups |
 | `GET /api/v1/cycles?zone=&currency=` | Recent billing cycles | rollups |

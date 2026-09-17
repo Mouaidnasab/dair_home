@@ -26,6 +26,11 @@ def test_live_is_served_from_ram(settings, topology, store, clock, cloud):
     assert [z["zone"] for z in body["zones"]] == ["ground", "first", "garden"]
     ground = body["zones"][0]
     assert ground["battery_sns"] == ["072604830025322349"]  # shared battery shows up for ground too
-    assert body["home"]["pv_w"] == 3600.0  # three inverters, batteries not double counted
+    systems = {x["system"]: x for x in body["systems"]}
+    assert list(systems) == ["home", "garden"]
+    assert systems["home"]["zones"] == ["ground", "first"]
+    assert systems["home"]["pv_w"] == 2400.0  # ground + first inverters; the shared battery isn't double counted
+    assert systems["home"]["battery_sns"] == ["072604830025322349"]
+    assert systems["garden"]["pv_w"] == 1200.0 and systems["garden"]["battery_sns"] == ["072604820026022401"]
     assert len(body["batteries"]) == 2
     assert body["batteries"][0]["zones"] == ["first", "ground"]

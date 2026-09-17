@@ -1,5 +1,7 @@
 {
-  "app": { "title": "Deir Attiyeh Home" },
+  "app": {
+    "title": "Deir Attiyeh Home"
+  },
   "common": {
     "refresh": "Refresh",
     "currency": "Currency",
@@ -11,10 +13,26 @@
     "collector_errors_one": "{{count}} device is not responding to the cloud right now.",
     "collector_errors_other": "{{count}} devices are not responding to the cloud right now."
   },
-  "zone": { "home": "Whole home", "ground": "Ground Floor", "first": "First Floor", "garden": "Garden" },
-  "power": { "solar": "Solar", "load": "Consumption", "battery": "Battery", "battery_flow": "Battery flow", "grid": "Grid" },
-  "grid": { "on": "Grid on", "off": "Grid off" },
-  "inverter": { "temp": "Inverter" },
+  "zone": {
+    "home": "Home (Ground + First)",
+    "ground": "Ground Floor",
+    "first": "First Floor",
+    "garden": "Garden"
+  },
+  "power": {
+    "solar": "Solar",
+    "load": "Consumption",
+    "battery": "Battery",
+    "battery_flow": "Battery flow",
+    "grid": "Grid"
+  },
+  "grid": {
+    "on": "Grid on",
+    "off": "Grid off"
+  },
+  "inverter": {
+    "temp": "Inverter"
+  },
   "battery": {
     "title": "Battery",
     "shared": "Shared battery",
@@ -31,7 +49,10 @@
     "spread": "Cell spread",
     "cell_detail": "{{count}} cell voltages"
   },
-  "chart": { "title": "Power over the day", "no_data": "No data for this day." },
+  "chart": {
+    "title": "Power over the day",
+    "no_data": "No data for this day."
+  },
   "energy": {
     "title": "Energy & grid bill",
     "day": "Day",
@@ -45,5 +66,15 @@
     "cycle_label": "Cycle",
     "tier_upto": "First {{kwh}} kWh",
     "tier_rest": "Above that"
+  },
+  "system": {
+    "home": "Home",
+    "garden": "Garden"
+  },
+  "flow": {
+    "import": "Import",
+    "export": "Export",
+    "on": "On",
+    "off": "Off"
   }
 }

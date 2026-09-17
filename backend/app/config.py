@@ -106,6 +106,7 @@ class Plant:
     name: str
     zone: str
     label: str
+    system: str = ""
 
 
 @dataclass(frozen=True)
@@ -135,7 +136,10 @@ class Topology:
     @classmethod
     def load(cls, path: Path) -> "Topology":
         raw = tomllib.loads(Path(path).read_text())
-        plants = tuple(Plant(p["id"], p.get("name", ""), p["zone"], p.get("label", p["zone"])) for p in raw.get("plant", []))
+        plants = tuple(
+            Plant(p["id"], p.get("name", ""), p["zone"], p.get("label", p["zone"]), p.get("system", p["zone"]))
+            for p in raw.get("plant", [])
+        )
         devices = tuple(
             Device(
                 sn=d["sn"], kind=d["kind"], plant=d["plant"], zones=tuple(d["zones"]),
@@ -159,10 +163,25 @@ class Topology:
                 raise ValueError(f"{d.sn}: unknown zones {set(d.zones) - zones}")
         if len({d.sn for d in self.devices}) != len(self.devices):
             raise ValueError("duplicate device sn")
+        for d in self.devices:
+            systems = {p.system for p in self.plants if p.zone in d.zones}
+            if len(systems) > 1:
+                raise ValueError(f"{d.sn}: zones {d.zones} span several systems {systems}")
+        for sysname in {p.system for p in self.plants}:
+            if sysname in zones and self.system_zones(sysname) != [sysname]:
+                raise ValueError(f"system {sysname!r} clashes with a zone of another system")
 
     @property
     def zones(self) -> list[str]:
         return [p.zone for p in self.plants]
+
+    @property
+    def systems(self) -> list[str]:
+        """Independent installations, in topology order (e.g. ["home", "garden"])."""
+        return list(dict.fromkeys(p.system for p in self.plants))
+
+    def system_zones(self, system: str) -> list[str]:
+        return [p.zone for p in self.plants if p.system == system]
 
     def device(self, sn: str) -> Device | None:
         return next((d for d in self.devices if d.sn == sn), None)

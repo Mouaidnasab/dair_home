@@ -86,16 +86,25 @@ def create_app(services: Services | None = None, start_background: bool = True) 
             invs = [devices[d.sn] for d in s.topology.inverters(plant.zone)]
             bats = [devices[d.sn] for d in s.topology.batteries(plant.zone)]
             zones.append({
-                "zone": plant.zone, "label": plant.label, "plant_id": plant.id,
+                "zone": plant.zone, "label": plant.label, "plant_id": plant.id, "system": plant.system,
                 **_sum_power(invs),
                 "soc": _avg([b["soc"] for b in bats]) if any(b["soc"] is not None for b in bats) else _avg([i["soc"] for i in invs]),
                 "inverters": invs,
                 "battery_sns": [b["sn"] for b in bats],
             })
-        all_invs = [devices[d.sn] for d in s.topology.inverters()]
+        systems = []
+        for sysname in s.topology.systems:
+            zones_in = s.topology.system_zones(sysname)
+            invs = [devices[d.sn] for d in s.topology.inverters() if set(d.zones) & set(zones_in)]
+            bats = [devices[d.sn] for d in s.topology.batteries() if set(d.zones) & set(zones_in)]
+            systems.append({
+                "system": sysname, "zones": zones_in, **_sum_power(invs),
+                "soc": _avg([b["soc"] for b in bats]) if any(b["soc"] is not None for b in bats) else _avg([i["soc"] for i in invs]),
+                "battery_sns": [b["sn"] for b in bats],
+            })
         return {
             "now": now,
-            "home": {**_sum_power(all_invs), "soc": _avg([devices[d.sn]["soc"] for d in s.topology.batteries()])},
+            "systems": systems,
             "zones": zones,
             "batteries": [devices[d.sn] for d in s.topology.batteries()],
             "collector": {
@@ -204,7 +213,8 @@ def create_app(services: Services | None = None, start_background: bool = True) 
     def topology() -> dict:
         t = svc().topology
         return {
-            "zones": [{"zone": p.zone, "label": p.label, "plant_id": p.id} for p in t.plants],
+            "systems": [{"system": name, "zones": t.system_zones(name)} for name in t.systems],
+            "zones": [{"zone": p.zone, "label": p.label, "plant_id": p.id, "system": p.system} for p in t.plants],
             "devices": [{"sn": d.sn, "kind": d.kind, "zones": list(d.zones), "model": d.model, "alias": d.alias} for d in t.devices],
         }
 
@@ -353,12 +363,18 @@ def _sum_power(invs: list[dict]) -> dict:
             "updated_ts": min((i["ts"] for i in fresh), default=None)}
 
 
+def _scope_zones(t: Topology, zone: str) -> list[str]:
+    """`zone` may name a zone ("ground") or a whole system ("home" = ground + first)."""
+    if zone in t.systems:
+        return t.system_zones(zone)
+    if zone in t.zones:
+        return [zone]
+    raise HTTPException(404, f"unknown zone or system {zone}")
+
+
 def _zone_inverters(t: Topology, zone: str) -> list[str]:
-    if zone == "home":
-        return [d.sn for d in t.inverters()]
-    if zone not in t.zones:
-        raise HTTPException(404, f"unknown zone {zone}")
-    return [d.sn for d in t.inverters(zone)]
+    zones = set(_scope_zones(t, zone))
+    return [d.sn for d in t.inverters() if zones & set(d.zones)]
 
 
 def _series_devices(t: Topology, zone: str, sn: str | None) -> tuple[list[str], list[str]]:
@@ -367,8 +383,9 @@ def _series_devices(t: Topology, zone: str, sn: str | None) -> tuple[list[str], 
         if not d:
             raise HTTPException(404, f"unknown device {sn}")
         return [sn], [sn]
-    invs = _zone_inverters(t, zone)
-    bats = [d.sn for d in (t.batteries() if zone == "home" else t.batteries(zone))]
+    zones = set(_scope_zones(t, zone))
+    invs = [d.sn for d in t.inverters() if zones & set(d.zones)]
+    bats = [d.sn for d in t.batteries() if zones & set(d.zones)]
     return invs, bats or invs
 
 

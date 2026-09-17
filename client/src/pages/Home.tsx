@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import BatteryCard from "@/components/BatteryCard";
 import Header from "@/components/Header";
-import HomeOverview from "@/components/HomeOverview";
+import EnergyFlowCard from "@/components/EnergyFlowCard";
 import ZoneCard from "@/components/ZoneCard";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -29,7 +29,7 @@ export default function Home() {
 
   return (
     <div className="flex min-h-screen flex-col overflow-x-hidden bg-background">
-      <Header updatedTs={data?.home.updated_ts ?? null} loading={live.loading} onRefresh={live.refresh} />
+      <Header updatedTs={data ? Math.min(...data.systems.map(x => x.updated_ts ?? Infinity)) : null} loading={live.loading} onRefresh={live.refresh} />
       <main className="container flex-1 space-y-4 py-4 sm:py-6">
         {live.error && (
           <Card className="border-destructive">
@@ -41,7 +41,9 @@ export default function Home() {
         {data && !data.collector.enabled && <p className="text-sm text-muted-foreground">{t("common.collector_off")}</p>}
         {errors > 0 && <p className="text-sm text-amber-600">{t("common.collector_errors", { count: errors })}</p>}
 
-        {data ? <HomeOverview home={data.home} /> : <Placeholder h="h-24" />}
+        <section className="grid min-w-0 gap-4 lg:grid-cols-2">
+          {data ? data.systems.map(sys => <EnergyFlowCard key={sys.system} system={sys} />) : [0, 1].map(i => <Placeholder key={i} h="h-72" />)}
+        </section>
 
         <section className="grid min-w-0 gap-4 md:grid-cols-3">
           {data

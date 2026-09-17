@@ -1,7 +1,9 @@
 // Response shapes of the backend /api/v1 endpoints (backend/app/api.py).
 
 export type ZoneId = "ground" | "first" | "garden";
-export type ZoneOrHome = ZoneId | "home";
+export type SystemId = "home" | "garden";
+/** Scope for charts and bills: a whole system ("home" = ground + first) or a single zone. */
+export type ZoneOrHome = ZoneId | SystemId;
 export type DeviceKind = "inverter" | "battery";
 
 export interface SampleFields {
@@ -61,8 +63,15 @@ export interface PowerSummary {
   soc: number | null;
 }
 
+export interface SystemLive extends PowerSummary {
+  system: SystemId;
+  zones: ZoneId[];
+  battery_sns: string[];
+}
+
 export interface ZoneLive extends PowerSummary {
   zone: ZoneId;
+  system: SystemId;
   label: string;
   plant_id: string;
   inverters: DeviceLive[];
@@ -71,7 +80,7 @@ export interface ZoneLive extends PowerSummary {
 
 export interface LiveResponse {
   now: number;
-  home: PowerSummary;
+  systems: SystemLive[];
   zones: ZoneLive[];
   batteries: DeviceLive[];
   collector: { enabled: boolean; buffered: number; last_flush_ts: number | null; errors: Record<string, string> };
