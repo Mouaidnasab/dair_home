@@ -10,7 +10,7 @@ services:
     container_name: dair-home
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "${DAIR_PORT:-3000}:8000"  # dashboard + API on the old frontend port (8000 stays free)
     env_file:
       - ../backend/.env            # FELICITY_USER, FELICITY_PASS, API_KEY_EXCHANGE
     environment:

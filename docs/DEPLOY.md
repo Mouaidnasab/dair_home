@@ -1,7 +1,7 @@
 # Deploying on the Raspberry Pi
 
 One container, one process: FastAPI collects from the Felicity cloud, stores it in SQLite on
-`/srv/dair/data`, and serves the dashboard on port 8000. The Node server is gone.
+`/srv/dair/data`, and serves the dashboard and API on port 3000, the old frontend's port (set `DAIR_PORT` to change it). The Node server is gone.
 
 ## What touches the SD card
 
