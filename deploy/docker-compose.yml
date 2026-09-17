@@ -18,6 +18,8 @@ services:
       DATA_DIR: /data
       FLUSH_INTERVAL: "900"        # seconds between SQLite writes (one transaction each)
       BACKFILL_MAX_DAYS: "7"       # gap filled from the cloud on start
+      HISTORY_BACKFILL: "1"        # once: fill every incomplete past day from the cloud's history
+      # HISTORY_SINCE: "2025-10-16" # oldest day to fetch (default: until the cloud has no more)
       RAW_RETENTION_DAYS: "180"    # 5-minute samples; hourly/daily totals are kept forever
       # ARCHIVE_DIR: /mnt/usb/dair-archive   # optional: csv.gz of raw samples before deletion.
       #   Leave unset unless it points OFF the SD card (USB disk/NAS mount), otherwise retention

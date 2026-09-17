@@ -96,22 +96,25 @@ def refresh(store: Store, sn: str, start_ts: int, end_ts: int) -> None:
         )
         days = sorted({local_day(t) for t in range(first_day, last_day_end, HOUR)})
         c.execute("DELETE FROM rollup_daily WHERE device_sn=? AND day>=? AND day<=?", (sn, days[0], days[-1]))
-        c.execute(
-            """
-            INSERT INTO rollup_daily (device_sn, day, pv_kwh, load_kwh, grid_kwh, bat_charge_kwh, bat_discharge_kwh,
-                                      grid_up_s, soc_min, soc_max, soc_avg, samples)
-            SELECT device_sn, date(bucket, 'unixepoch', ?) AS day,
-                   ROUND(SUM(pv_kwh), 5), ROUND(SUM(load_kwh), 5), ROUND(SUM(grid_kwh), 5),
-                   ROUND(SUM(bat_charge_kwh), 5), ROUND(SUM(bat_discharge_kwh), 5), SUM(grid_up_s),
-                   MIN(soc_min), MAX(soc_max),
-                   ROUND(SUM(soc_avg * samples) / NULLIF(SUM(CASE WHEN soc_avg IS NOT NULL THEN samples END), 0), 2),
-                   SUM(samples)
-            FROM rollup_hourly
-            WHERE device_sn=? AND bucket>=? AND bucket<?
-            GROUP BY day
-            """,
-            (_sqlite_offset(first_day), sn, first_day, last_day_end),
+        # Group hours into local days in Python: the UTC offset may change across a range (old DST).
+        daily: dict[str, list] = {}
+        for bucket, b in sorted(hourly.items()):
+            daily.setdefault(local_day(bucket), []).append(_finish(b))
+        c.executemany(
+            f"INSERT INTO rollup_daily (device_sn, day, {', '.join(ROLLUP_COLS)}) VALUES (?, ?, {', '.join('?' * len(ROLLUP_COLS))})",
+            [(sn, day, *_combine(rows)) for day, rows in daily.items()],
         )
+
+
+def _combine(hours: list[tuple]) -> tuple:
+    """Sum a day's hourly rollup tuples (ROLLUP_COLS order)."""
+    pv, load, grid, chg, dis, up, _, _, _, n = (list(x) for x in zip(*hours))
+    soc_min = [v for v in (h[6] for h in hours) if v is not None]
+    soc_max = [v for v in (h[7] for h in hours) if v is not None]
+    weighted = [(h[8], h[9]) for h in hours if h[8] is not None]
+    soc_avg = round(sum(a * k for a, k in weighted) / sum(k for _, k in weighted), 2) if weighted else None
+    return (round(sum(pv), 5), round(sum(load), 5), round(sum(grid), 5), round(sum(chg), 5), round(sum(dis), 5),
+            sum(up), min(soc_min) if soc_min else None, max(soc_max) if soc_max else None, soc_avg, sum(n))
 
 
 def refresh_many(store: Store, spans: dict[str, tuple[int, int]]) -> None:
@@ -127,9 +130,3 @@ def spans_of(samples: Iterable[dict]) -> dict[str, tuple[int, int]]:
         lo, hi = spans.get(s["device_sn"], (s["ts"], s["ts"]))
         spans[s["device_sn"]] = (min(lo, s["ts"]), max(hi, s["ts"]))
     return spans
-
-
-def _sqlite_offset(ts: int) -> str:
-    """SQLite date() modifier for Asia/Damascus at `ts` (fixed +03:00 since 2022, but stay honest)."""
-    off = datetime.fromtimestamp(ts, LOCAL_TZ).utcoffset() or timedelta(0)
-    return f"{int(off.total_seconds() // 60):+d} minutes"

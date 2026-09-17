@@ -116,6 +116,7 @@ class FelicityClient:
             body = await self._request(
                 "POST", "/storageRealtimeData/list_storageRealtimeData_new",
                 json={"dateStr": f"{day.isoformat()} 12:00:00", "deviceSn": sn, "deviceType": device_type, "pageNum": page, "pageSize": 1000},
+                timeout=90,  # a full day of history often takes the cloud a minute to produce
             )
             data = body.get("data") or {}
             rows += data.get("dataList") or []

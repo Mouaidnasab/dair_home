@@ -19,7 +19,8 @@ def topology() -> Topology:
 
 @pytest.fixture
 def settings(tmp_path) -> Settings:
-    return Settings(data_dir=tmp_path, db_path=tmp_path / "dair.sqlite3", collector_enabled=False)
+    return Settings(data_dir=tmp_path, db_path=tmp_path / "dair.sqlite3", collector_enabled=False,
+                    history_request_pause=0, history_retry_delays=(0, 0))
 
 
 @pytest.fixture
@@ -52,6 +53,8 @@ class FakeCloud:
         self.calls = 0
         self.history_calls = 0
         self.fail: set[str] = set()
+        self.history_start: float = 0  # the cloud keeps no history before this unix time
+        self.history_days: list = []
 
     def _report_ts(self, now: float) -> int:
         t = int(now) - self.lag
@@ -76,11 +79,15 @@ class FakeCloud:
 
     async def history(self, sn: str, device_type: str, day) -> list[dict]:
         self.history_calls += 1
+        self.history_days.append((sn, day))
         device = self.topology.device(sn)
         tz = timezone(device.utc_offset.utcoffset(None))
         start = int(datetime(day.year, day.month, day.day, tzinfo=tz).timestamp())
         rows = []
-        for ts in range(start, min(start + 86400, self._report_ts(self.clock()) + 1), self.period):
+        first = start
+        if start < self.history_start:
+            first = int(self.history_start) + (-int(self.history_start)) % self.period
+        for ts in range(first, min(start + 86400, self._report_ts(self.clock()) + 1), self.period):
             p = self.payload(sn, ts)
             p["deviceDataTime"] = p.pop("dataTimeStr")
             p.pop("dataTime")

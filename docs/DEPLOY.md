@@ -17,6 +17,34 @@ One container, one process: FastAPI collects from the Felicity cloud, stores it 
 - Bill views read the daily totals.
 - On a power cut you lose at most the last 15 minutes of the buffer. The next start re-downloads it from the cloud's 5-minute history.
 
+## Filling history from the cloud
+
+The cloud keeps each device's 5-minute history for months, so the database can hold more than
+the old CSVs ever did. Two mechanisms:
+
+- **Gap after downtime:** on every start, `backfill` fetches from the newest stored reading up to now (up to `BACKFILL_MAX_DAYS`).
+- **Full history, once:** on first start, `backfill-history` runs in the background.
+  - It walks each device back from yesterday, one day at a time.
+  - Days that already have ≥ 95 % of their readings are skipped with no request, so migrated CSV days cost nothing.
+  - Every other day is fetched from the cloud, one request per second (`HISTORY_REQUEST_PAUSE`).
+  - It stops once the cloud has returned nothing for `HISTORY_MAX_EMPTY_DAYS` (14) days in a row, meaning that device's history has run out, or at `HISTORY_SINCE` if you set it.
+  - Rows are written about a week at a time, together with the rollups.
+  - Progress is saved, so a restart resumes where it stopped. A finished device is never fetched again.
+  - The Felicity API is slow (often about a minute per day of history) and drops connections now and then. Each day is retried twice (after 10 s and 60 s). A device that still fails is picked up again by an hourly job until every device is complete.
+  - How far back the cloud goes (checked 2026-09-17): ground and first floor from about the end of January 2026, the garden from its install day 2026-05-05. Expect a few hours for the first run, and about 1 MB of database per month of history.
+  - Set `HISTORY_BACKFILL=0` to turn it off.
+
+> **Keep the Oct 2025 – Jan 2026 CSVs until they are migrated.** The cloud no longer has those
+> days, so the old CSVs are the only copy. After `migrate-csv --verify` their energy totals live
+> in the rollups forever. Raw 5-minute rows older than `RAW_RETENTION_DAYS` are still removed by
+> retention, so keep the backup tarball from step 0 if you want the raw data.
+
+To re-check a range by hand (for example after the cloud had an outage):
+
+```bash
+docker exec dair-home python -m app.cli backfill-history --since 2026-01-01 --force
+```
+
 ## First run: migrate the old CSV data
 
 Do this on the Pi, against the Pi's own CSVs. A parity check on another machine proves nothing
@@ -45,8 +73,10 @@ docker compose -f deploy/docker-compose.yml run --rm -e COLLECTOR_ENABLED=0 dair
 #    If it stops with "database is locked" (a service flush landed at the same moment),
 #    just run it again.
 
-# 4. (optional) pull older history from the cloud: it keeps 5-minute data for months
-docker compose -f deploy/docker-compose.yml run --rm -e COLLECTOR_ENABLED=0 dair python -m app.cli backfill --days 240
+# 4. nothing to do for older history: on its first start the service walks back through the
+#    cloud's 5-minute history in the background and fills every day that isn't complete
+#    (including gaps between the old CSVs). Watch it with:
+docker logs -f dair-home | grep history
 ```
 
 After a week of the new system running correctly, delete the migrated CSVs. Only files whose

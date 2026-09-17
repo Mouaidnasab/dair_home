@@ -251,9 +251,18 @@ async def _start_background(svc: Services):
                 await svc.collector.backfill()
             except Exception:  # noqa: BLE001
                 log.exception("backfill failed")
+            if s.history_backfill:
+                # One-time walk back through the cloud's history; resumes after restarts, then no-ops.
+                try:
+                    await svc.collector.backfill_history()
+                except Exception:  # noqa: BLE001
+                    log.exception("history backfill failed")
 
         asyncio.create_task(startup())
         scheduler.add_job(svc.collector.tick, "interval", seconds=s.poll_tick)
+        if s.history_backfill:
+            # Retries devices that didn't finish (cloud errors). A no-op once every device is complete.
+            scheduler.add_job(svc.collector.backfill_history, "interval", hours=1)
     else:
         log.warning("collector disabled (no FELICITY_USER/FELICITY_PASS or COLLECTOR_ENABLED=0)")
 

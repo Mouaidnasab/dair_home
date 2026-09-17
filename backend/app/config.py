@@ -6,7 +6,7 @@ import os
 import re
 import tomllib
 from dataclasses import dataclass, field
-from datetime import timedelta, timezone
+from datetime import date, timedelta, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -43,6 +43,11 @@ class Settings:
     poll_lag: int = 90  # seconds after a device's next report before asking the cloud
     flush_interval: int = 900
     backfill_max_days: int = 7
+    history_backfill: bool = True  # walk back through the cloud's history once, in the background
+    history_since: date | None = None  # oldest day to fetch (None: until the cloud runs out)
+    history_max_empty_days: int = 14
+    history_request_pause: float = 1.0
+    history_retry_delays: tuple[float, ...] = (10.0, 60.0)
     raw_retention_days: int = 180
     archive_dir: Path | None = None
     exchange_api_key: str = ""
@@ -66,6 +71,10 @@ class Settings:
             poll_lag=_env_int("POLL_LAG", 90),
             flush_interval=_env_int("FLUSH_INTERVAL", 900),
             backfill_max_days=_env_int("BACKFILL_MAX_DAYS", 7),
+            history_backfill=os.getenv("HISTORY_BACKFILL", "1") not in ("0", "false", "no"),
+            history_since=date.fromisoformat(os.environ["HISTORY_SINCE"]) if os.getenv("HISTORY_SINCE") else None,
+            history_max_empty_days=_env_int("HISTORY_MAX_EMPTY_DAYS", 14),
+            history_request_pause=float(os.getenv("HISTORY_REQUEST_PAUSE", "1.0")),
             raw_retention_days=_env_int("RAW_RETENTION_DAYS", 180),
             archive_dir=Path(archive) if archive else None,
             exchange_api_key=os.getenv("API_KEY_EXCHANGE") or os.getenv("api_key_exchange") or "",

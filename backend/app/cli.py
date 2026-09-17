@@ -42,6 +42,13 @@ def main(argv: list[str] | None = None) -> int:
     b.add_argument("--db")
     b.add_argument("--days", type=int, default=settings.backfill_max_days)
 
+    h = sub.add_parser("backfill-history", help="fill every incomplete past day from cloud history (needs credentials)")
+    h.add_argument("--db")
+    h.add_argument("--since", help="oldest day to fetch, YYYY-MM-DD (default: until the cloud has no more)")
+    h.add_argument("--max-empty-days", type=int, default=settings.history_max_empty_days)
+    h.add_argument("--pause", type=float, default=settings.history_request_pause, help="seconds between cloud requests")
+    h.add_argument("--force", action="store_true", help="re-check devices already marked complete")
+
     rb = sub.add_parser("rebuild-rollups", help="recompute rollups from all raw samples")
     rb.add_argument("--db")
 
@@ -100,6 +107,21 @@ def main(argv: list[str] | None = None) -> int:
             return await c.backfill(args.days)
 
         print(f"backfilled {asyncio.run(with_client(run))} samples")
+        return 0
+
+    if args.cmd == "backfill-history":
+        from datetime import date as _date
+
+        store = _store(args, settings)
+
+        async def run(client):
+            c = Collector(settings, topology, store, client)
+            c.load_state()
+            return await c.backfill_history(
+                since=_date.fromisoformat(args.since) if args.since else None,
+                max_empty_days=args.max_empty_days, pause=args.pause, force=args.force)
+
+        print(json.dumps(asyncio.run(with_client(run)), indent=2))
         return 0
 
     if args.cmd == "discover":

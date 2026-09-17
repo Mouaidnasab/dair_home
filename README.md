@@ -47,6 +47,7 @@ pnpm check && pnpm build                    # → dist/public (served by the bac
 - `delete-csv --src DIR [--confirm]`
 - `retention [--dry-run]`
 - `backfill --days N`
+- `backfill-history [--since YYYY-MM-DD] [--force]`
 - `rebuild-rollups`
 
 See [docs/DEPLOY.md](docs/DEPLOY.md) for what each one does.
